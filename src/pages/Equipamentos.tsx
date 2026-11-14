@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LoadError } from '@/components/LoadError'
 import { useToast } from '@/hooks/use-toast'
+import { useAuth } from '@/contexts/AuthContext'
 import { equipamentosService, frentesService } from '@/services/producao'
 import { formatHoras } from '@/lib/exportUtils'
 import type { Categoria, Equipamento, Frente } from '@/types'
@@ -21,6 +22,7 @@ const CATEGORIAS: Categoria[] = [
 
 export default function Equipamentos() {
   const { toast } = useToast()
+  const { ehGestor } = useAuth()
   const [frentes, setFrentes] = useState<Frente[]>([])
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -176,35 +178,37 @@ export default function Equipamentos() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700">Nova frente</Label>
-                <Input
-                  value={novaFrente}
-                  onChange={(e) => setNovaFrente(e.target.value.toUpperCase())}
-                  placeholder="Ex.: ESCAVADEIRA 24H"
-                />
+            {ehGestor && (
+              <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-700">Nova frente</Label>
+                  <Input
+                    value={novaFrente}
+                    onChange={(e) => setNovaFrente(e.target.value.toUpperCase())}
+                    placeholder="Ex.: ESCAVADEIRA 24H"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-700">
+                    Garantia de horas mensais
+                  </Label>
+                  <Input
+                    inputMode="decimal"
+                    value={novaGarantia}
+                    onChange={(e) => setNovaGarantia(e.target.value)}
+                    placeholder="Ex.: 500"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  onClick={criarFrente}
+                  className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Adicionar frente
+                </Button>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700">
-                  Garantia de horas mensais
-                </Label>
-                <Input
-                  inputMode="decimal"
-                  value={novaGarantia}
-                  onChange={(e) => setNovaGarantia(e.target.value)}
-                  placeholder="Ex.: 500"
-                />
-              </div>
-              <Button
-                type="button"
-                onClick={criarFrente}
-                className="w-full bg-blue-600 text-white hover:bg-blue-700"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Adicionar frente
-              </Button>
-            </div>
+            )}
 
             <div className="divide-y divide-slate-100">
               {frentes.map((f) => (
@@ -215,15 +219,17 @@ export default function Equipamentos() {
                       Garantia: {formatHoras(f.garantia_horas)} h/mês
                     </p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => editarGarantia(f)}
-                    className="h-7 shrink-0 px-2 text-xs text-blue-600 hover:bg-blue-50"
-                  >
-                    <Pencil className="mr-1 h-3 w-3" />
-                    Editar
-                  </Button>
+                  {ehGestor && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => editarGarantia(f)}
+                      className="h-7 shrink-0 px-2 text-xs text-blue-600 hover:bg-blue-50"
+                    >
+                      <Pencil className="mr-1 h-3 w-3" />
+                      Editar
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
@@ -239,55 +245,59 @@ export default function Equipamentos() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <form
-              onSubmit={criarEquipamento}
-              className="space-y-3 rounded-lg border border-slate-100 bg-slate-50/60 p-3"
-            >
-              <div className="grid gap-3 sm:grid-cols-2">
+            {ehGestor && (
+              <form
+                onSubmit={criarEquipamento}
+                className="space-y-3 rounded-lg border border-slate-100 bg-slate-50/60 p-3"
+              >
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Identificação</Label>
+                    <Input
+                      value={identificacao}
+                      onChange={(e) => setIdentificacao(e.target.value.toUpperCase())}
+                      placeholder="ST 57"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Categoria</Label>
+                    <select
+                      value={categoria}
+                      onChange={(e) => setCategoria(e.target.value as Categoria)}
+                      className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+                    >
+                      {CATEGORIAS.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-700">Identificação</Label>
+                  <Label className="text-xs font-semibold text-slate-700">
+                    Descrição (opcional)
+                  </Label>
                   <Input
-                    value={identificacao}
-                    onChange={(e) => setIdentificacao(e.target.value.toUpperCase())}
-                    placeholder="ST 57"
+                    value={descricao}
+                    onChange={(e) => setDescricao(e.target.value.toUpperCase())}
+                    placeholder="CAMINHÃO 3344"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-700">Categoria</Label>
-                  <select
-                    value={categoria}
-                    onChange={(e) => setCategoria(e.target.value as Categoria)}
-                    className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
-                  >
-                    {CATEGORIAS.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700">Descrição (opcional)</Label>
-                <Input
-                  value={descricao}
-                  onChange={(e) => setDescricao(e.target.value.toUpperCase())}
-                  placeholder="CAMINHÃO 3344"
-                />
-              </div>
-              <Button
-                type="submit"
-                disabled={salvando}
-                className="w-full bg-blue-600 text-white hover:bg-blue-700"
-              >
-                {salvando ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="mr-2 h-4 w-4" />
-                )}
-                Adicionar equipamento
-              </Button>
-            </form>
+                <Button
+                  type="submit"
+                  disabled={salvando}
+                  className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  {salvando ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="mr-2 h-4 w-4" />
+                  )}
+                  Adicionar equipamento
+                </Button>
+              </form>
+            )}
 
             <div className="max-h-[420px] divide-y divide-slate-100 overflow-y-auto">
               {equipamentos.map((eq) => (
@@ -299,15 +309,17 @@ export default function Equipamentos() {
                     </p>
                     <p className="text-[11px] text-slate-500">{eq.categoria || 'OUTRO'}</p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => excluirEquipamento(eq)}
-                    className="h-7 w-7 shrink-0 p-0 text-slate-400 hover:text-red-600"
-                    title="Excluir equipamento"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  {ehGestor && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => excluirEquipamento(eq)}
+                      className="h-7 w-7 shrink-0 p-0 text-slate-400 hover:text-red-600"
+                      title="Excluir equipamento"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>

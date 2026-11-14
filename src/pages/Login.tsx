@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { getErrorMessage } from '@/lib/pocketbase/errors'
-import { HardHat, Lock, Mail, ArrowRight, Loader2, AlertCircle, UserPlus } from 'lucide-react'
+import { HardHat, Lock, Mail, ArrowRight, Loader2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,18 +16,17 @@ import {
 } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
-type Modo = 'login' | 'signup'
-
+/**
+ * Tela de entrada. Não existe cadastro aqui: as contas são criadas pelo
+ * gestor, dentro do sistema, na tela "Acessos".
+ */
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login, signup, isAuthenticated } = useAuth()
+  const { login, isAuthenticated } = useAuth()
 
-  const [modo, setModo] = useState<Modo>('login')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
-  const [confirmacao, setConfirmacao] = useState('')
-  const [nome, setNome] = useState('')
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -48,28 +47,10 @@ export default function Login() {
       setErro('Informe seu e-mail e sua senha.')
       return
     }
-    if (modo === 'signup') {
-      if (!nome.trim()) {
-        setErro('Informe o seu nome.')
-        return
-      }
-      if (senha.length < 8) {
-        setErro('A senha deve ter no mínimo 8 caracteres.')
-        return
-      }
-      if (senha !== confirmacao) {
-        setErro('As senhas não coincidem.')
-        return
-      }
-    }
 
     try {
       setCarregando(true)
-      if (modo === 'signup') {
-        await signup(nome, email, senha)
-      } else {
-        await login(email, senha)
-      }
+      await login(email, senha)
       destino()
     } catch (err) {
       console.error('Erro de autenticação:', err)
@@ -77,7 +58,7 @@ export default function Login() {
       setErro(
         msg && msg !== 'Ocorreu um erro inesperado.'
           ? msg
-          : 'Credenciais inválidas. Verifique seu e-mail e senha.',
+          : 'E-mail ou senha incorretos. Confira e tente de novo.',
       )
     } finally {
       setCarregando(false)
@@ -98,12 +79,10 @@ export default function Login() {
         <Card className="border-slate-800 bg-white/95 shadow-2xl backdrop-blur">
           <CardHeader className="space-y-1">
             <CardTitle className="text-xl font-semibold text-slate-900">
-              {modo === 'login' ? 'Entrar no sistema' : 'Criar nova conta'}
+              Entrar no sistema
             </CardTitle>
             <CardDescription className="text-slate-600">
-              {modo === 'login'
-                ? 'Digite seu e-mail e senha para acessar os lançamentos'
-                : 'Cadastre-se com e-mail e senha para começar a usar'}
+              Use o e-mail e a senha que o gestor cadastrou para você.
             </CardDescription>
           </CardHeader>
 
@@ -116,21 +95,6 @@ export default function Login() {
                 </Alert>
               )}
 
-              {modo === 'signup' && (
-                <div className="space-y-2">
-                  <Label htmlFor="nome" className="text-xs font-semibold text-slate-700">
-                    Seu nome
-                  </Label>
-                  <Input
-                    id="nome"
-                    value={nome}
-                    onChange={(e) => setNome(e.target.value)}
-                    placeholder="Ex.: Rafael Silveira"
-                    autoComplete="name"
-                  />
-                </div>
-              )}
-
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-xs font-semibold text-slate-700">
                   E-mail
@@ -140,7 +104,7 @@ export default function Login() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="gestor@empresa.com"
+                    placeholder="nome@silveiratransportes.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-9"
@@ -164,29 +128,10 @@ export default function Login() {
                     onChange={(e) => setSenha(e.target.value)}
                     className="pl-9"
                     required
-                    autoComplete={modo === 'signup' ? 'new-password' : 'current-password'}
+                    autoComplete="current-password"
                   />
                 </div>
               </div>
-
-              {modo === 'signup' && (
-                <div className="space-y-2">
-                  <Label htmlFor="confirmacao" className="text-xs font-semibold text-slate-700">
-                    Confirmar senha
-                  </Label>
-                  <Input
-                    id="confirmacao"
-                    type="password"
-                    placeholder="••••••••"
-                    value={confirmacao}
-                    onChange={(e) => setConfirmacao(e.target.value)}
-                    required
-                    minLength={8}
-                    autoComplete="new-password"
-                  />
-                  <p className="text-[11px] text-slate-500">Mínimo de 8 caracteres.</p>
-                </div>
-              )}
             </CardContent>
 
             <CardFooter className="flex-col gap-3">
@@ -198,32 +143,19 @@ export default function Login() {
                 {carregando ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {modo === 'login' ? 'Entrando...' : 'Criando conta...'}
+                    Entrando...
                   </>
                 ) : (
                   <>
-                    {modo === 'login' ? 'Acessar Painel' : 'Criar conta e entrar'}
+                    Acessar Painel
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </>
                 )}
               </Button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setModo(modo === 'login' ? 'signup' : 'login')
-                  setErro(null)
-                  setConfirmacao('')
-                }}
-                className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
-              >
-                <span className="flex items-center gap-1.5">
-                  <UserPlus className="h-3.5 w-3.5" />
-                  {modo === 'login'
-                    ? 'Não tem conta? Criar cadastro'
-                    : 'Já tenho conta — voltar ao login'}
-                </span>
-              </button>
+              <p className="text-center text-[11px] leading-relaxed text-slate-500">
+                Não tem acesso? Peça ao gestor para criar a sua conta em Acessos.
+              </p>
 
               <Link to="/" className="sr-only">
                 início

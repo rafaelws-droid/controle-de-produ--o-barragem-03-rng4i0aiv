@@ -6,11 +6,13 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LoadError } from '@/components/LoadError'
 import { useToast } from '@/hooks/use-toast'
+import { useAuth } from '@/contexts/AuthContext'
 import { operadoresService } from '@/services/producao'
 import type { Operador } from '@/types'
 
 export default function Operadores() {
   const { toast } = useToast()
+  const { ehGestor } = useAuth()
   const [operadores, setOperadores] = useState<Operador[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erroCarga, setErroCarga] = useState(false)
@@ -108,7 +110,7 @@ export default function Operadores() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="h-fit border-slate-200">
+        <Card className={ehGestor ? 'h-fit border-slate-200' : 'hidden'}>
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold text-slate-900">Novo cadastro</CardTitle>
           </CardHeader>
@@ -149,7 +151,9 @@ export default function Operadores() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 lg:col-span-2">
+        <Card
+          className={ehGestor ? 'border-slate-200 lg:col-span-2' : 'border-slate-200 lg:col-span-3'}
+        >
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold text-slate-900">Cadastrados</CardTitle>
             <Input
@@ -170,15 +174,17 @@ export default function Operadores() {
                     <p className="truncate text-sm font-medium text-slate-800">{o.nome}</p>
                     <p className="text-[11px] text-slate-500">{o.funcao || 'OPERADOR'}</p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => excluir(o)}
-                    className="h-7 w-7 shrink-0 p-0 text-slate-400 hover:text-red-600"
-                    title="Excluir"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  {ehGestor && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => excluir(o)}
+                      className="h-7 w-7 shrink-0 p-0 text-slate-400 hover:text-red-600"
+                      title="Excluir"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
               ))}
               {filtrados.length === 0 && (

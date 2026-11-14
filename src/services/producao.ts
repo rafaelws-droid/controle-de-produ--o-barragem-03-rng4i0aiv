@@ -1,7 +1,22 @@
 import pb from '@/lib/pocketbase/client'
-import type { Equipamento, Frente, Lancamento, Operador } from '@/types'
+import type { Equipamento, Frente, Lancamento, Operador, UsuarioSistema } from '@/types'
 
 const EXPAND = 'frente,equipamento,operador,substituindo'
+
+/** Contas do sistema — gestao restrita ao papel GESTOR (regra no servidor). */
+export const usuariosService = {
+  getAll: () => pb.collection('users').getFullList<UsuarioSistema>({ sort: 'papel,name' }),
+  create: (data: {
+    name: string
+    email: string
+    password: string
+    passwordConfirm: string
+    papel: string
+  }) => pb.collection('users').create<UsuarioSistema>(data),
+  update: (id: string, data: Partial<UsuarioSistema>) =>
+    pb.collection('users').update<UsuarioSistema>(id, data),
+  delete: (id: string) => pb.collection('users').delete(id),
+}
 
 export const frentesService = {
   getAll: () => pb.collection('frentes').getFullList<Frente>({ sort: 'ordem,nome' }),

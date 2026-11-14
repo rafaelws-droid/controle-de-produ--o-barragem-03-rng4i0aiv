@@ -9,6 +9,7 @@ import Lancamentos from './pages/Lancamentos'
 import Relatorio from './pages/Relatorio'
 import Equipamentos from './pages/Equipamentos'
 import Operadores from './pages/Operadores'
+import Usuarios from './pages/Usuarios'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 import { AuthProvider } from './contexts/AuthContext'
@@ -79,6 +80,14 @@ const App = () => (
               element={
                 <ErrorBoundary key="operadores">
                   <Operadores />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/usuarios"
+              element={
+                <ErrorBoundary key="usuarios">
+                  <Usuarios />
                 </ErrorBoundary>
               }
             />

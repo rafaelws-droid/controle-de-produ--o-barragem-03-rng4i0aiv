@@ -1,3 +1,14 @@
+export type Papel = 'GESTOR' | 'LANCADOR'
+
+/** Conta que acessa o sistema. O papel decide o que ela pode fazer. */
+export interface UsuarioSistema {
+  id: string
+  email: string
+  name?: string
+  papel?: Papel
+  created?: string
+}
+
 export type Categoria =
   | 'ESCAVADEIRA'
   | 'PÁ CARREGADEIRA'

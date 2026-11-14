@@ -9,6 +9,7 @@ import {
   Users,
   LogOut,
   HardHat,
+  ShieldCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -30,11 +31,13 @@ const NAV = [
   { label: 'Relatório', path: '/relatorio', icon: FileBarChart },
   { label: 'Equipamentos', path: '/equipamentos', icon: Truck },
   { label: 'Operadores', path: '/operadores', icon: Users },
+  { label: 'Acessos', path: '/usuarios', icon: ShieldCheck, soGestor: true },
 ]
 
 export function Navbar() {
-  const { user, logout } = useAuth()
+  const { user, logout, ehGestor } = useAuth()
   const location = useLocation()
+  const itens = NAV.filter((i) => !i.soGestor || ehGestor)
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
@@ -52,7 +55,7 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
-          {NAV.map((item) => {
+          {itens.map((item) => {
             const Icon = item.icon
             const ativo = location.pathname === item.path
             return (
@@ -85,7 +88,9 @@ export function Navbar() {
                 <span className="max-w-[150px] truncate font-semibold leading-tight text-slate-800">
                   {user.name || user.email}
                 </span>
-                <span className="max-w-[150px] truncate text-slate-500">{user.email}</span>
+                <span className="max-w-[150px] truncate text-slate-500">
+                  {ehGestor ? 'Gestor' : 'Lançador'} · {user.email}
+                </span>
               </div>
             </>
           )}
@@ -104,7 +109,7 @@ export function Navbar() {
 
       <div className="border-t border-slate-100 bg-slate-50/80 px-2 py-1.5 md:hidden">
         <div className="grid grid-cols-3 gap-1 text-center">
-          {NAV.map((item) => {
+          {itens.map((item) => {
             const Icon = item.icon
             const ativo = location.pathname === item.path
             return (

@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { LoadError } from '@/components/LoadError'
 import { useToast } from '@/hooks/use-toast'
+import { useAuth } from '@/contexts/AuthContext'
 import {
   equipamentosService,
   frentesService,
@@ -24,6 +25,7 @@ import type { Equipamento, Frente, Lancamento, Operador } from '@/types'
 
 export default function Lancamentos() {
   const { toast } = useToast()
+  const { ehGestor } = useAuth()
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([])
   const [frentes, setFrentes] = useState<Frente[]>([])
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([])
@@ -248,28 +250,32 @@ export default function Lancamentos() {
                     )}
                   </td>
                   <td className="whitespace-nowrap px-3 py-2">
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        asChild
-                        title="Editar (reabre o formulário)"
-                        className="h-7 w-7 p-0 text-slate-500 hover:text-blue-600"
-                      >
-                        <Link to={`/relatorio?frente=${l.frente}&de=${l.data}&ate=${l.data}`}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => excluir(l)}
-                        title="Excluir lançamento"
-                        className="h-7 w-7 p-0 text-slate-400 hover:text-red-600"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    {ehGestor ? (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                          title="Ver no relatório"
+                          className="h-7 w-7 p-0 text-slate-500 hover:text-blue-600"
+                        >
+                          <Link to={`/relatorio?frente=${l.frente}&de=${l.data}&ate=${l.data}`}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => excluir(l)}
+                          title="Excluir lançamento"
+                          className="h-7 w-7 p-0 text-slate-400 hover:text-red-600"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-slate-400">—</span>
+                    )}
                   </td>
                 </tr>
               ))}
