@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-11-14T22:18:08.308Z",
+  "generatedAt": "2026-11-14T22:27:12.239Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
-        "list": "id = @request.auth.id",
+        "list": null,
         "view": "id = @request.auth.id",
-        "create": "",
-        "update": "id = @request.auth.id",
-        "delete": "id = @request.auth.id"
+        "create": null,
+        "update": "id = @request.auth.id && @request.body.papel:changed = false",
+        "delete": null
       },
       "fields": [
         {
@@ -42,6 +42,16 @@
             "onCreate",
             "onUpdate"
           ]
+        },
+        {
+          "name": "papel",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "GESTOR",
+            "LANCADOR"
+          ]
         }
       ],
       "indexes": [
@@ -55,9 +65,9 @@
       "apiRules": {
         "list": "@request.auth.id != ''",
         "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "create": "@request.auth.papel = 'GESTOR'",
+        "update": "@request.auth.papel = 'GESTOR'",
+        "delete": "@request.auth.papel = 'GESTOR'"
       },
       "fields": [
         {
@@ -114,9 +124,9 @@
       "apiRules": {
         "list": "@request.auth.id != ''",
         "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "create": "@request.auth.papel = 'GESTOR'",
+        "update": "@request.auth.papel = 'GESTOR'",
+        "delete": "@request.auth.papel = 'GESTOR'"
       },
       "fields": [
         {
@@ -181,9 +191,9 @@
       "apiRules": {
         "list": "@request.auth.id != ''",
         "view": "@request.auth.id != ''",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "create": "@request.auth.papel = 'GESTOR'",
+        "update": "@request.auth.papel = 'GESTOR'",
+        "delete": "@request.auth.papel = 'GESTOR'"
       },
       "fields": [
         {
@@ -239,8 +249,8 @@
         "list": "@request.auth.id != ''",
         "view": "@request.auth.id != ''",
         "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != ''",
-        "delete": "@request.auth.id != ''"
+        "update": "@request.auth.papel = 'GESTOR'",
+        "delete": "@request.auth.papel = 'GESTOR'"
       },
       "fields": [
         {
