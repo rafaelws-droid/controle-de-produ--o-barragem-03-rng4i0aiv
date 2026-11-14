@@ -11,6 +11,7 @@ import {
   Loader2,
   ArrowRight,
   Route,
+  AlertTriangle,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,17 +20,45 @@ import { frentesService, lancamentosService } from '@/services/producao'
 import { formatDataBR, formatHoras, nomeEquipamento, nomeOperador } from '@/lib/exportUtils'
 import type { Frente, Lancamento } from '@/types'
 
-/** Primeiro dia do mês corrente (YYYY-MM-DD). */
-function inicioDoMes(): string {
+const iso = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/**
+ * Ciclo de faturamento do contrato: do dia 20 ao dia 19 do mes seguinte,
+ * igual ao periodo da planilha oficial ("PERIODO 20/10 a 19/11/2026").
+ * Se hoje e antes do dia 20, o ciclo comecou no dia 20 do mes anterior.
+ */
+function cicloAtual(): { de: string; ate: string; rotulo: string } {
   const hoje = new Date()
-  return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-01`
+  const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 20)
+  if (hoje.getDate() < 20) inicio.setMonth(inicio.getMonth() - 1)
+  const fim = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 19)
+  return {
+    de: iso(inicio),
+    ate: iso(fim),
+    rotulo: `Ciclo ${formatDataBR(iso(inicio))} a ${formatDataBR(iso(fim))}`,
+  }
 }
+
+function mesCivil(): { de: string; ate: string; rotulo: string } {
+  const hoje = new Date()
+  const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+  const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)
+  return {
+    de: iso(inicio),
+    ate: iso(fim),
+    rotulo: `Mes de ${inicio.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`,
+  }
+}
+
+type Modo = 'ciclo' | 'mes' | 'tudo'
 
 export default function Index() {
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([])
   const [frentes, setFrentes] = useState<Frente[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState(false)
+  const [modo, setModo] = useState<Modo>('ciclo')
 
   const carregar = async () => {
     try {
@@ -50,34 +79,58 @@ export default function Index() {
     void carregar()
   }, [])
 
-  const inicioMes = inicioDoMes()
+  const periodo = useMemo(() => {
+    if (modo === 'ciclo') return cicloAtual()
+    if (modo === 'mes') return mesCivil()
+    const datas = lancamentos.map((l) => l.data).sort()
+    if (datas.length === 0) return { de: '', ate: '', rotulo: 'Sem lancamentos' }
+    return {
+      de: datas[0],
+      ate: datas[datas.length - 1],
+      rotulo: `Tudo: ${formatDataBR(datas[0])} a ${formatDataBR(datas[datas.length - 1])}`,
+    }
+  }, [modo, lancamentos])
 
-  const doMes = useMemo(
-    () => lancamentos.filter((l) => l.data >= inicioMes),
-    [lancamentos, inicioMes],
+  const doPeriodo = useMemo(
+    () =>
+      lancamentos.filter(
+        (l) => (!periodo.de || l.data >= periodo.de) && (!periodo.ate || l.data <= periodo.ate),
+      ),
+    [lancamentos, periodo],
   )
 
-  const hoje = new Date().toISOString().split('T')[0]
+  const hoje = iso(new Date())
   const deHoje = useMemo(() => lancamentos.filter((l) => l.data === hoje), [lancamentos, hoje])
 
-  const horasMes = doMes.reduce((a, l) => a + (l.horas || 0), 0)
-  const viagensMes = doMes.reduce((a, l) => a + (l.viagens || 0), 0)
+  const horasPeriodo = doPeriodo.reduce((a, l) => a + (l.horas || 0), 0)
+  const viagensPeriodo = doPeriodo.reduce((a, l) => a + (l.viagens || 0), 0)
 
-  /** Progresso da garantia mensal por frente (usando os lançamentos do mês). */
+  /**
+   * Progresso da garantia por frente no periodo escolhido.
+   * A porcentagem NAO e limitada a 100%: quando a frente passa da garantia,
+   * isso precisa aparecer, nao ser escondido.
+   */
   const progresso = useMemo(() => {
     const porFrente = new Map<string, number>()
-    for (const l of doMes) {
+    for (const l of doPeriodo) {
       porFrente.set(l.frente, (porFrente.get(l.frente) || 0) + (l.horas || 0))
     }
     return frentes
       .map((f) => {
         const feito = Number((porFrente.get(f.id) || 0).toFixed(2))
         const garantia = f.garantia_horas || 0
-        const pct = garantia > 0 ? Math.min(100, (feito / garantia) * 100) : 0
-        return { frente: f, feito, garantia, pct, falta: Math.max(0, garantia - feito) }
+        const pct = garantia > 0 ? (feito / garantia) * 100 : 0
+        return {
+          frente: f,
+          feito,
+          garantia,
+          pct,
+          falta: Math.max(0, garantia - feito),
+          excedente: Math.max(0, feito - garantia),
+        }
       })
       .sort((a, b) => b.pct - a.pct)
-  }, [doMes, frentes])
+  }, [doPeriodo, frentes])
 
   const recentes = useMemo(
     () => [...lancamentos].sort((a, b) => (a.data < b.data ? 1 : -1)).slice(0, 6),
@@ -89,7 +142,7 @@ export default function Index() {
       <div className="flex items-center justify-center rounded-xl border border-slate-200 bg-white p-12">
         <div className="flex flex-col items-center gap-2 text-slate-500">
           <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
-          <p className="text-sm">Carregando painel de produção...</p>
+          <p className="text-sm">Carregando painel de producao...</p>
         </div>
       </div>
     )
@@ -99,7 +152,7 @@ export default function Index() {
     return (
       <LoadError
         title="Erro ao carregar o painel"
-        message="Não foi possível buscar os lançamentos. Verifique sua conexão e tente novamente."
+        message="Nao foi possivel buscar os lancamentos. Verifique sua conexao e tente novamente."
         onRetry={carregar}
       />
     )
@@ -111,10 +164,10 @@ export default function Index() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
             <HardHat className="h-7 w-7 text-blue-600" />
-            Produção Barragem 03
+            Producao Barragem 03
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Lançamento diário de horas, viagens e serviços por equipamento.
+            Lancamento diario de horas, viagens e servicos por equipamento.
           </p>
         </div>
         <Button
@@ -123,20 +176,61 @@ export default function Index() {
         >
           <Link to="/novo">
             <PlusCircle className="h-4 w-4" />
-            Lançar Produção
+            Lancar Producao
           </Link>
         </Button>
       </div>
 
-      {/* Indicadores do mês */}
+      {/* Seletor de periodo: o mesmo numero pode ser lido de tres jeitos */}
+      <Card className="border-slate-200">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Periodo somado
+            </p>
+            <p className="text-sm font-semibold text-slate-800">{periodo.rotulo}</p>
+            <p className="text-[11px] text-slate-500">
+              {doPeriodo.length} lancamento(s) neste periodo
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={modo === 'ciclo' ? 'default' : 'outline'}
+              onClick={() => setModo('ciclo')}
+              className={modo === 'ciclo' ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}
+            >
+              Ciclo do contrato (20 a 19)
+            </Button>
+            <Button
+              size="sm"
+              variant={modo === 'mes' ? 'default' : 'outline'}
+              onClick={() => setModo('mes')}
+              className={modo === 'mes' ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}
+            >
+              Mes civil
+            </Button>
+            <Button
+              size="sm"
+              variant={modo === 'tudo' ? 'default' : 'outline'}
+              onClick={() => setModo('tudo')}
+              className={modo === 'tudo' ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}
+            >
+              Tudo
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Indicadores do periodo */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Card className="border-slate-200">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
               <CalendarDays className="h-4 w-4 text-blue-500" />
-              Lançamentos do mês
+              Lancamentos
             </div>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{doMes.length}</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{doPeriodo.length}</p>
             <p className="text-[11px] text-slate-500">{deHoje.length} hoje</p>
           </CardContent>
         </Card>
@@ -144,20 +238,20 @@ export default function Index() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
               <Gauge className="h-4 w-4 text-emerald-500" />
-              Horas no mês
+              Horas no periodo
             </div>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{formatHoras(horasMes)} h</p>
-            <p className="text-[11px] text-slate-500">soma dos horímetros</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{formatHoras(horasPeriodo)} h</p>
+            <p className="text-[11px] text-slate-500">soma dos horimetros</p>
           </CardContent>
         </Card>
         <Card className="border-slate-200">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
               <Route className="h-4 w-4 text-purple-500" />
-              Viagens no mês
+              Viagens
             </div>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{viagensMes}</p>
-            <p className="text-[11px] text-slate-500">caminhões</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{viagensPeriodo}</p>
+            <p className="text-[11px] text-slate-500">caminhoes</p>
           </CardContent>
         </Card>
         <Card className="border-slate-200">
@@ -177,14 +271,17 @@ export default function Index() {
         <Card className="border-slate-200 lg:col-span-2">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold text-slate-900">
-              Garantia de horas mensais por frente
+              Garantia de horas por frente
             </CardTitle>
+            <p className="text-[11px] text-slate-500">
+              Percentual calculado sobre {periodo.rotulo.toLowerCase()}
+            </p>
           </CardHeader>
           <CardContent className="space-y-3">
             {progresso.length === 0 && (
               <p className="text-sm text-slate-500">Nenhuma frente cadastrada.</p>
             )}
-            {progresso.map(({ frente, feito, garantia, pct, falta }) => (
+            {progresso.map(({ frente, feito, garantia, pct, falta, excedente }) => (
               <div key={frente.id}>
                 <div className="mb-1 flex items-baseline justify-between gap-2 text-xs">
                   <span className="truncate font-medium text-slate-700">{frente.nome}</span>
@@ -196,26 +293,43 @@ export default function Index() {
                 <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
                   <div
                     className={`h-full rounded-full ${
-                      pct >= 100 ? 'bg-emerald-500' : pct >= 70 ? 'bg-blue-500' : 'bg-amber-400'
+                      excedente > 0
+                        ? 'bg-red-500'
+                        : pct >= 100
+                          ? 'bg-emerald-500'
+                          : pct >= 70
+                            ? 'bg-blue-500'
+                            : 'bg-amber-400'
                     }`}
-                    style={{ width: `${pct}%` }}
+                    style={{ width: `${Math.min(100, pct)}%` }}
                   />
                 </div>
-                <p className="mt-0.5 text-[11px] text-slate-400">
-                  {pct >= 100
-                    ? 'Garantia atingida'
-                    : `Faltam ${formatHoras(falta)} h (${pct.toFixed(0)}%)`}
+                <p
+                  className={`mt-0.5 text-[11px] ${
+                    excedente > 0 ? 'font-semibold text-red-600' : 'text-slate-400'
+                  }`}
+                >
+                  {excedente > 0 ? (
+                    <span className="flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Estourou a garantia em {formatHoras(excedente)} h ({pct.toFixed(0)}%)
+                    </span>
+                  ) : pct >= 100 ? (
+                    'Garantia atingida'
+                  ) : (
+                    `Faltam ${formatHoras(falta)} h (${pct.toFixed(0)}%)`
+                  )}
                 </p>
               </div>
             ))}
           </CardContent>
         </Card>
 
-        {/* Últimos lançamentos */}
+        {/* Ultimos lancamentos */}
         <Card className="border-slate-200">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base font-semibold text-slate-900">
-              Últimos lançamentos
+              Ultimos lancamentos
             </CardTitle>
             <Link
               to="/lancamentos"
@@ -226,7 +340,7 @@ export default function Index() {
           </CardHeader>
           <CardContent className="space-y-2.5">
             {recentes.length === 0 && (
-              <p className="text-sm text-slate-500">Nenhum lançamento ainda.</p>
+              <p className="text-sm text-slate-500">Nenhum lancamento ainda.</p>
             )}
             {recentes.map((l) => (
               <div
@@ -235,10 +349,10 @@ export default function Index() {
               >
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold text-slate-800">
-                    {nomeEquipamento(l)} · {nomeOperador(l)}
+                    {nomeEquipamento(l)} - {nomeOperador(l)}
                   </p>
                   <p className="truncate text-[11px] text-slate-500">
-                    {formatDataBR(l.data)} · {l.expand?.frente?.nome || '-'}
+                    {formatDataBR(l.data)} - {l.expand?.frente?.nome || '-'}
                   </p>
                 </div>
                 <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-bold text-blue-700">
@@ -250,7 +364,7 @@ export default function Index() {
         </Card>
       </div>
 
-      {/* Ações rápidas */}
+      {/* Acoes rapidas */}
       <div className="grid gap-3 sm:grid-cols-3">
         <Link
           to="/novo"
@@ -258,8 +372,8 @@ export default function Index() {
         >
           <PlusCircle className="h-8 w-8 text-blue-600" />
           <div>
-            <p className="text-sm font-semibold text-slate-800">Lançar produção</p>
-            <p className="text-xs text-slate-500">Registro diário por equipamento</p>
+            <p className="text-sm font-semibold text-slate-800">Lancar producao</p>
+            <p className="text-xs text-slate-500">Registro diario por equipamento</p>
           </div>
         </Link>
         <Link
@@ -268,8 +382,8 @@ export default function Index() {
         >
           <History className="h-8 w-8 text-emerald-600" />
           <div>
-            <p className="text-sm font-semibold text-slate-800">Relatório e exportação</p>
-            <p className="text-xs text-slate-500">PDF, Excel e CSV por período</p>
+            <p className="text-sm font-semibold text-slate-800">Relatorio e exportacao</p>
+            <p className="text-xs text-slate-500">PDF, Excel e CSV por periodo</p>
           </div>
         </Link>
         <Link
