@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-14T21:01:06.721Z",
+  "generatedAt": "2026-11-14T21:10:12.692Z",
   "collections": [
     {
       "name": "users",
@@ -29,19 +29,367 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
         "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
         "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''"
+      ]
+    },
+    {
+      "name": "frentes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "garantia_horas",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ordem",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ativo",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_frentes_nome ON frentes (nome)"
+      ]
+    },
+    {
+      "name": "equipamentos",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "identificacao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "categoria",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "ESCAVADEIRA",
+            "PÁ CARREGADEIRA",
+            "CAMINHÃO",
+            "CAMINHÃO PIPA",
+            "ROLO COMPACTADOR",
+            "OUTRO"
+          ]
+        },
+        {
+          "name": "ativo",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_equipamentos_identificacao ON equipamentos (identificacao)"
+      ]
+    },
+    {
+      "name": "operadores",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "funcao",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "OPERADOR",
+            "MOTORISTA"
+          ]
+        },
+        {
+          "name": "ativo",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_operadores_nome ON operadores (nome)"
+      ]
+    },
+    {
+      "name": "lancamentos",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "data",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "frente",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "frentes"
+        },
+        {
+          "name": "equipamento",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "equipamentos"
+        },
+        {
+          "name": "operador",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "operadores"
+        },
+        {
+          "name": "turno",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "1º TURNO",
+            "2º TURNO",
+            "3º TURNO"
+          ]
+        },
+        {
+          "name": "horimetro_inicial",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "horimetro_final",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "horas",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "viagens",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "servico",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "refeicao",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "abastecimento",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "manutencao",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "dds",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "apr",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "checklist",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "disposicao",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "substituindo",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "equipamentos"
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_lancamentos_data ON lancamentos (data)",
+        "CREATE INDEX idx_lancamentos_equipamento ON lancamentos (equipamento)",
+        "CREATE INDEX idx_lancamentos_frente ON lancamentos (frente)"
       ]
     }
   ]
