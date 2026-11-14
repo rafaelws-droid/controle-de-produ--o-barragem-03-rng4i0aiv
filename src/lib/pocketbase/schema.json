@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-14T21:10:12.692Z",
+  "generatedAt": "2026-11-14T21:21:32.477Z",
   "collections": [
     {
       "name": "users",
@@ -29,14 +29,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -84,17 +89,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_frentes_nome ON frentes (nome)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_frentes_nome ON frentes (nome)"
+      ]
     },
     {
       "name": "equipamentos",
@@ -144,14 +156,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -180,7 +197,10 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["OPERADOR", "MOTORISTA"]
+          "selectValues": [
+            "OPERADOR",
+            "MOTORISTA"
+          ]
         },
         {
           "name": "ativo",
@@ -193,17 +213,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_operadores_nome ON operadores (nome)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_operadores_nome ON operadores (nome)"
+      ]
     },
     {
       "name": "lancamentos",
@@ -248,7 +275,11 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["1º TURNO", "2º TURNO", "3º TURNO"]
+          "selectValues": [
+            "1º TURNO",
+            "2º TURNO",
+            "3º TURNO"
+          ]
         },
         {
           "name": "horimetro_inicial",
@@ -265,7 +296,7 @@
         {
           "name": "horas",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
@@ -340,14 +371,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
