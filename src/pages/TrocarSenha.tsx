@@ -53,7 +53,12 @@ export default function TrocarSenha() {
         password: senha,
         passwordConfirm: senha,
       })
-      await pb.collection('users').authRefresh()
+      // O PocketBase invalida o token antigo quando a senha muda. Sem entrar de
+      // novo com a senha nova, o usuário cai para a tela de login logo após
+      // salvar. Aqui a sessão é renovada na hora.
+      const email = pb.authStore.model?.email
+      if (!email) throw new Error('Sessão expirada')
+      await pb.collection('users').authWithPassword(email, senha)
       setPronto(true)
       setAtual('')
       setSenha('')
