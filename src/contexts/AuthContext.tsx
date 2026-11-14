@@ -18,6 +18,7 @@ interface AuthContextType {
   isLoading: boolean
   ehGestor: boolean
   login: (email: string, senha: string) => Promise<void>
+  cadastrar: (nome: string, email: string, senha: string) => Promise<void>
   logout: () => void
 }
 
@@ -66,6 +67,23 @@ async function validarSessaoEmSegundoPlano(): Promise<void> {
   }
 }
 
+/**
+ * Conta criada antes da mudança de permissão pode estar sem papel. Sem papel o
+ * usuário não lança e não apaga — e a tela parece quebrada. Aqui o sistema
+ * assume LANCADOR para quem está logado e está sem papel. Nunca rebaixa
+ * ninguém: quem já é gestor ou lançador não é tocado.
+ */
+async function garantirPapel(): Promise<void> {
+  const m = pb.authStore.model as ModeloAuth
+  if (!m || !m.id || m.papel) return
+  try {
+    await pb.collection('users').update(m.id, { papel: 'LANCADOR' })
+    await pb.collection('users').authRefresh()
+  } catch (err) {
+    console.warn('Não foi possível definir o papel:', err)
+  }
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<Usuario | null>(() =>
     pb.authStore.isValid ? usuarioDoStore() : null,
@@ -76,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     setupAuthErrorHandling()
 
-    void validarSessaoEmSegundoPlano()
+    void validarSessaoEmSegundoPlano().then(garantirPapel)
 
     const unsubscribe = pb.authStore.onChange((novoToken, model) => {
       setToken(novoToken)
@@ -90,6 +108,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, senha: string) => {
     await pb.collection('users').authWithPassword(email.trim(), senha)
+  }
+
+  /**
+   * Cadastro feito pela propria pessoa. A regra do servidor exige
+   * papel = LANCADOR, entao quem se cadastra nunca nasce como gestor.
+   */
+  const cadastrar = async (nome: string, email: string, senha: string) => {
+    await pb.collection('users').create({
+      name: nome.trim(),
+      email: email.trim().toLowerCase(),
+      password: senha,
+      passwordConfirm: senha,
+      papel: 'LANCADOR',
+    })
+    await pb.collection('users').authWithPassword(email.trim().toLowerCase(), senha)
   }
 
   const logout = () => {
@@ -107,6 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         ehGestor: user?.papel === 'GESTOR',
         login,
+        cadastrar,
         logout,
       }}
     >
