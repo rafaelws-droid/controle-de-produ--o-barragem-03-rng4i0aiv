@@ -122,11 +122,11 @@ function colunaLetra(indice: number): string {
 const escapar = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
-const colar = (s: string): string =>
-  s
-    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '')
-    .replace(/\r?\n/g, ' ')
-    .slice(0, 32000)
+// Remove caracteres de controle que o Excel recusa no XML (via codes, para não
+// casar um intervalo literal de controle na regex).
+const CONTROLE = new RegExp('[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]', 'g')
+
+const colar = (s: string): string => s.replace(CONTROLE, '').replace(/\r?\n/g, ' ').slice(0, 32000)
 
 function xmlPlanilha(linhas: (string | number | null)[][]): string {
   const corpo = linhas
