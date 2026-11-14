@@ -21,32 +21,61 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-/** Valida a sessão no servidor com teto de tempo — nunca trava o carregamento. */
-async function validarSessao(): Promise<void> {
+/** Usuário salvo no aparelho, lido sem falar com o servidor. */
+function usuarioDoStore(): Usuario | null {
+  const m = pb.authStore.model as {
+    id?: string
+    email?: string
+    name?: string
+    avatar?: string
+  } | null
+  if (!m || !m.id) return null
+  return {
+    id: m.id,
+    email: m.email || '',
+    name: m.name || m.email || '',
+    avatar: m.avatar,
+  }
+}
+
+/**
+ * Valida a sessão no servidor em SEGUNDO PLANO.
+ *
+ * Regra que evita a tela branca: falha de rede, lentidão ou tempo esgotado
+ * NUNCA derruba a sessão do usuário. Só uma resposta real do servidor dizendo
+ * que a sessão não vale mais (401) encerra o login — e isso é feito pelo
+ * authGuard, não aqui.
+ */
+async function validarSessaoEmSegundoPlano(): Promise<void> {
   if (!pb.authStore.isValid) return
-  await Promise.race([
-    pb.collection('users').authRefresh(),
-    new Promise((_r, reject) =>
-      setTimeout(() => reject(new Error('timeout_validacao_sessao')), 8000),
-    ),
-  ]).catch((err) => {
-    console.warn('Validação de sessão falhou:', err)
-    pb.authStore.clear()
-  })
+  try {
+    await pb.collection('users').authRefresh()
+  } catch (err) {
+    const status = (err as { status?: number })?.status
+    if (status === 401 || status === 403) {
+      // Sessão realmente inválida: o authGuard já limpou o token.
+      return
+    }
+    // Sem rede, servidor lento ou instável: mantém o acesso e tenta depois.
+    console.warn('Validação de sessão adiada (rede):', err)
+  }
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<Usuario | null>(null)
+  /**
+   * Estado inicial lido do aparelho, sem esperar a rede: quem já entrou vê a
+   * tela na hora. A validação acontece depois, sem travar nada.
+   */
+  const [user, setUser] = useState<Usuario | null>(() =>
+    pb.authStore.isValid ? usuarioDoStore() : null,
+  )
   const [token, setToken] = useState<string | null>(pb.authStore.token)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     setupAuthErrorHandling()
 
-    void validarSessao().finally(() => setIsLoading(false))
-
-    // Se a validação não terminar por qualquer motivo, destrava em 10s.
-    const t = setTimeout(() => setIsLoading(false), 10000)
+    void validarSessaoEmSegundoPlano()
 
     const unsubscribe = pb.authStore.onChange((novoToken, model) => {
       setToken(novoToken)
@@ -63,7 +92,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })
 
     return () => {
-      clearTimeout(t)
       unsubscribe()
     }
   }, [])

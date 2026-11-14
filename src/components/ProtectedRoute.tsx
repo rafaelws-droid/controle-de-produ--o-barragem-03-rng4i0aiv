@@ -12,14 +12,14 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-3 text-slate-600">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-sm font-medium">Carregando dados de autenticação...</p>
+          <p className="text-sm font-medium">Carregando...</p>
         </div>
       </div>
     )
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location, sessaoExpirada: true }} replace />
+    return <Navigate to="/login" state={{ from: location }} replace />
   }
 
   return <>{children}</>

@@ -1,51 +1,66 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
 /**
- * Rede de segurança do roteamento (mesma correção usada no app de Horas Extras):
- * se o clique no menu mudar a URL mas o React continuar exibindo a tela
- * anterior, a página se recarrega sozinha no endereço certo — o que o usuário
- * faria com o botão de recarregar do navegador, só que automático.
+ * Recuperação de tela em branco.
+ *
+ * No celular, quando o aplicativo é minimizado/trocado, o navegador congela a
+ * aba. Ao voltar, o React pode ficar sem renderizar nada — e ai a tela fica
+ * branca ate o usuario atualizar na mao.
+ *
+ * Aqui o app VIGIA a si mesmo: se a raiz estiver renderizada e o conteudo
+ * aparecer vazio por alguns instantes, ele se recupera sozinho (uma vez por
+ * rota, para nunca entrar em ciclo de recarga).
  */
 export function RouteSyncGuard() {
-  const { pathname, search } = useLocation()
-  const rotaRenderizada = useRef(pathname + search)
+  const { pathname } = useLocation()
+  const [jaRecuperou, setJaRecuperou] = useState(false)
+  const tentativas = useRef(0)
 
-  rotaRenderizada.current = pathname + search
+  // Nova rota: permite uma nova recuperacao.
+  useEffect(() => {
+    tentativas.current = 0
+    setJaRecuperou(false)
+  }, [pathname])
 
   useEffect(() => {
-    let timer: number | undefined
+    if (jaRecuperou) return
 
-    const agendarChecagem = () => {
-      if (timer) window.clearTimeout(timer)
-      timer = window.setTimeout(() => {
-        const urlAtual = window.location.pathname + window.location.search
-        if (urlAtual !== rotaRenderizada.current) {
-          window.location.replace(window.location.href)
-        }
-      }, 300)
+    const verificar = () => {
+      const raiz = document.getElementById('root')
+      if (!raiz) return
+      // "Em branco" = raiz existe mas nao tem conteudo visivel.
+      const semConteudo = raiz.children.length === 0 || raiz.textContent?.trim().length === 0
+      if (!semConteudo) return
+      if (tentativas.current >= 1) return
+      tentativas.current += 1
+      setJaRecuperou(true)
+      window.location.reload()
     }
 
-    const pushStateOriginal = window.history.pushState.bind(window.history)
-    const replaceStateOriginal = window.history.replaceState.bind(window.history)
+    // Volta do segundo plano (celular): checa imediatamente e de novo logo depois.
+    const aoVoltar = () => {
+      if (document.visibilityState === 'visible') {
+        verificar()
+        window.setTimeout(verificar, 1200)
+      }
+    }
 
-    window.history.pushState = (data, unused, url) => {
-      pushStateOriginal(data, unused, url)
-      agendarChecagem()
-    }
-    window.history.replaceState = (data, unused, url) => {
-      replaceStateOriginal(data, unused, url)
-      agendarChecagem()
-    }
-    window.addEventListener('popstate', agendarChecagem)
+    const aoFicarVisivel = () => aoVoltar()
+
+    document.addEventListener('visibilitychange', aoFicarVisivel)
+    window.addEventListener('pageshow', aoVoltar)
+    window.addEventListener('online', aoVoltar)
+
+    const inicial = window.setTimeout(verificar, 2500)
 
     return () => {
-      if (timer) window.clearTimeout(timer)
-      window.history.pushState = pushStateOriginal
-      window.history.replaceState = replaceStateOriginal
-      window.removeEventListener('popstate', agendarChecagem)
+      document.removeEventListener('visibilitychange', aoFicarVisivel)
+      window.removeEventListener('pageshow', aoVoltar)
+      window.removeEventListener('online', aoVoltar)
+      window.clearTimeout(inicial)
     }
-  }, [])
+  }, [pathname, jaRecuperou])
 
   return null
 }
