@@ -122,9 +122,15 @@ function colunaLetra(indice: number): string {
 const escapar = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
-// Remove caracteres de controle que o Excel recusa no XML (via codes, para não
-// casar um intervalo literal de controle na regex).
-const CONTROLE = new RegExp('[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]', 'g')
+// Remove os caracteres de controle que o Excel recusa no XML. A classe é
+// montada a partir de char codes para não deixar controles literais no código.
+const CONTROLE = (() => {
+  const codes: number[] = []
+  for (let c = 0; c <= 8; c++) codes.push(c)
+  codes.push(11, 12)
+  for (let c = 14; c <= 31; c++) codes.push(c)
+  return new RegExp(`[${codes.map((c) => String.fromCharCode(c)).join('')}]`, 'g')
+})()
 
 const colar = (s: string): string => s.replace(CONTROLE, '').replace(/\r?\n/g, ' ').slice(0, 32000)
 
