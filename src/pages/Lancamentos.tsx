@@ -85,18 +85,23 @@ export default function Lancamentos() {
 
   const excluir = async (l: Lancamento) => {
     const ok = window.confirm(
-      `Excluir o lançamento de ${nomeEquipamento(l)} em ${formatDataBR(l.data)}? Essa ação não pode ser desfeita.`,
+      `Excluir o lançamento de ${nomeEquipamento(l)} em ${formatDataBR(l.data)} (${formatHoras(l.horas)} h)?\n\nEssa ação não pode ser desfeita.`,
     )
     if (!ok) return
     try {
       await lancamentosService.delete(l.id)
-      setLancamentos((atual) => atual.filter((x) => x.id !== l.id))
-      toast({ title: 'Lançamento excluído', description: 'O registro foi removido.' })
+      // Recarrega do servidor para os totais (horas/viagens) ficarem corretos.
+      await carregar()
+      toast({
+        title: 'Lançamento excluído',
+        description: `${nomeEquipamento(l)} · ${formatDataBR(l.data)} removido.`,
+      })
     } catch (e) {
       console.error(e)
       toast({
-        title: 'Erro ao excluir',
-        description: 'Não foi possível remover o lançamento.',
+        title: 'Não foi possível excluir',
+        description:
+          'Só o gestor pode apagar um lançamento. Se o problema continuar, tente de novo.',
         variant: 'destructive',
       })
     }
@@ -259,7 +264,7 @@ export default function Lancamentos() {
                           title="Ver no relatório"
                           className="h-7 w-7 p-0 text-slate-500 hover:text-blue-600"
                         >
-                          <Link to={`/relatorio?frente=${l.frente}&de=${l.data}&ate=${l.data}`}>
+                          <Link to={`/lancamento/${l.id}`}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Link>
                         </Button>

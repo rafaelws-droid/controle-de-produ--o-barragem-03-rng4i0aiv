@@ -29,29 +29,21 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         },
         {
           "name": "papel",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "GESTOR",
-            "LANCADOR"
-          ]
+          "selectValues": ["GESTOR", "LANCADOR"]
         }
       ],
       "indexes": [
@@ -99,24 +91,17 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
-      "indexes": [
-        "CREATE UNIQUE INDEX idx_frentes_nome ON frentes (nome)"
-      ]
+      "indexes": ["CREATE UNIQUE INDEX idx_frentes_nome ON frentes (nome)"]
     },
     {
       "name": "equipamentos",
@@ -166,19 +151,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
       "indexes": [
@@ -207,10 +187,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": [
-            "OPERADOR",
-            "MOTORISTA"
-          ]
+          "selectValues": ["OPERADOR", "MOTORISTA"]
         },
         {
           "name": "ativo",
@@ -223,24 +200,17 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
-      "indexes": [
-        "CREATE UNIQUE INDEX idx_operadores_nome ON operadores (nome)"
-      ]
+      "indexes": ["CREATE UNIQUE INDEX idx_operadores_nome ON operadores (nome)"]
     },
     {
       "name": "lancamentos",
@@ -285,11 +255,7 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": [
-            "1º TURNO",
-            "2º TURNO",
-            "3º TURNO"
-          ]
+          "selectValues": ["1º TURNO", "2º TURNO", "3º TURNO"]
         },
         {
           "name": "horimetro_inicial",
@@ -381,19 +347,14 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
       "indexes": [

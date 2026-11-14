@@ -52,6 +52,14 @@ const App = () => (
               }
             />
             <Route
+              path="/lancamento/:id"
+              element={
+                <ErrorBoundary key="editar">
+                  <NovoLancamento />
+                </ErrorBoundary>
+              }
+            />
+            <Route
               path="/lancamentos"
               element={
                 <ErrorBoundary key="lancamentos">

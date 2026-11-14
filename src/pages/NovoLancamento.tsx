@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   PlusCircle,
   Save,
@@ -11,6 +11,7 @@ import {
   User,
   Route,
   CheckCircle2,
+  Pencil,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,6 +45,9 @@ export default function NovoLancamento() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const { toast } = useToast()
+  // Quando a rota traz :id, a tela esta editando um lancamento existente.
+  const { id: idEdicao } = useParams<{ id: string }>()
+  const editando = !!idEdicao
 
   const [frentes, setFrentes] = useState<Frente[]>([])
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([])
@@ -78,6 +82,27 @@ export default function NovoLancamento() {
       setFrentes(fs)
       setEquipamentos(es)
       setOperadores(os)
+
+      // Edicao: preenche o formulario com o que ja esta gravado.
+      if (idEdicao) {
+        const l = await lancamentosService.getById(idEdicao)
+        setData(l.data)
+        setFrenteId(l.frente)
+        setEquipamentoId(l.equipamento)
+        setOperadorId(l.operador)
+        setTurno(l.turno)
+        setHi(String(l.horimetro_inicial))
+        setHf(String(l.horimetro_final))
+        setViagens(l.viagens ? String(l.viagens) : '')
+        setServico(l.servico)
+        setSubstituindo(l.substituindo || '')
+        setObservacao(l.observacao || '')
+        const marcadas: Record<string, boolean> = {}
+        for (const f of FLAGS) {
+          if (l[f.campo as keyof typeof l]) marcadas[f.campo as string] = true
+        }
+        setFlags(marcadas)
+      }
     } catch (e) {
       console.error(e)
       setErroCarga(true)
@@ -99,6 +124,8 @@ export default function NovoLancamento() {
    */
   useEffect(() => {
     let ativo = true
+    // Na edicao o horimetro ja vem do registro: nao buscar o ultimo do equipamento.
+    if (editando) return
     if (!equipamentoId) {
       setHi('')
       return
@@ -115,7 +142,7 @@ export default function NovoLancamento() {
     return () => {
       ativo = false
     }
-  }, [equipamentoId])
+  }, [equipamentoId, editando])
 
   const horas = useMemo(() => {
     const i = hi === '' ? null : Number(hi.replace(',', '.'))
@@ -164,15 +191,27 @@ export default function NovoLancamento() {
 
     try {
       setSalvando(true)
-      await lancamentosService.create(registro)
-      toast({
-        title: 'Lançamento gravado!',
-        description: `${formatHoras(horas)} h registradas em ${data.split('-').reverse().join('/')}.`,
-      })
+      if (editando && idEdicao) {
+        await lancamentosService.update(idEdicao, registro)
+        toast({
+          title: 'Lançamento atualizado',
+          description: `${formatHoras(horas)} h em ${data.split('-').reverse().join('/')}.`,
+        })
+      } else {
+        await lancamentosService.create(registro)
+        toast({
+          title: 'Lançamento gravado!',
+          description: `${formatHoras(horas)} h registradas em ${data.split('-').reverse().join('/')}.`,
+        })
+      }
       navigate('/lancamentos')
     } catch (err) {
       console.error(err)
-      setErro('Não foi possível salvar o lançamento. Confira os dados e tente novamente.')
+      setErro(
+        editando
+          ? 'Não foi possível salvar a alteração. Confira os dados e tente novamente.'
+          : 'Não foi possível salvar o lançamento. Confira os dados e tente novamente.',
+      )
     } finally {
       setSalvando(false)
     }
@@ -205,12 +244,17 @@ export default function NovoLancamento() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          <PlusCircle className="h-7 w-7 text-blue-600" />
-          Novo Lançamento de Produção
+          {editando ? (
+            <Pencil className="h-7 w-7 text-blue-600" />
+          ) : (
+            <PlusCircle className="h-7 w-7 text-blue-600" />
+          )}
+          {editando ? 'Editar Lançamento' : 'Novo Lançamento de Produção'}
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          O horímetro inicial vem preenchido com a última leitura do equipamento — digite apenas o
-          valor do fim do turno.
+          {editando
+            ? 'Altere o que precisar e salve. As horas são recalculadas pelo horímetro.'
+            : 'O horímetro inicial vem preenchido com a última leitura do equipamento — digite apenas o valor do fim do turno.'}
         </p>
       </div>
 
@@ -516,10 +560,21 @@ export default function NovoLancamento() {
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  Salvar Lançamento
+                  {editando ? 'Salvar Alteração' : 'Salvar Lançamento'}
                 </>
               )}
             </Button>
+
+            {editando && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/lancamentos')}
+                className="w-full"
+              >
+                Cancelar
+              </Button>
+            )}
           </CardContent>
         </Card>
       </form>

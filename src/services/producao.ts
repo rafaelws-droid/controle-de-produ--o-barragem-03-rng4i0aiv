@@ -48,6 +48,8 @@ export const lancamentosService = {
     })
   },
 
+  getById: (id: string) => pb.collection('lancamentos').getOne<Lancamento>(id, { expand: EXPAND }),
+
   async getRecentes(limite = 8): Promise<Lancamento[]> {
     const res = await pb.collection('lancamentos').getList<Lancamento>(1, limite, {
       sort: '-data,-created',
