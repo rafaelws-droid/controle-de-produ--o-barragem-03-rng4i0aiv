@@ -261,7 +261,7 @@ export default function Lancamentos() {
                           variant="ghost"
                           size="sm"
                           asChild
-                          title="Ver no relatório"
+                          title="Editar lançamento"
                           className="h-7 w-7 p-0 text-slate-500 hover:text-blue-600"
                         >
                           <Link to={`/lancamento/${l.id}`}>
