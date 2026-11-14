@@ -2,7 +2,17 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { getErrorMessage } from '@/lib/pocketbase/errors'
-import { HardHat, Lock, Mail, ArrowRight, Loader2, AlertCircle, UserPlus, User } from 'lucide-react'
+import {
+  HardHat,
+  Lock,
+  Mail,
+  ArrowRight,
+  Loader2,
+  AlertCircle,
+  UserPlus,
+  User,
+  CheckCircle2,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -30,6 +40,9 @@ export default function Login() {
   const [confirmacao, setConfirmacao] = useState('')
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [aviso, setAviso] = useState<string | null>(
+    (location.state as { mensagem?: string })?.mensagem ?? null,
+  )
 
   const destino = () => {
     const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/'
@@ -43,6 +56,7 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErro(null)
+    setAviso(null)
 
     if (!email.trim() || !senha) {
       setErro('Informe seu e-mail e sua senha.')
@@ -126,6 +140,13 @@ export default function Login() {
 
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
+              {aviso && !erro && (
+                <Alert className="border-emerald-200 bg-emerald-50 py-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <AlertDescription className="text-xs text-emerald-800">{aviso}</AlertDescription>
+                </Alert>
+              )}
+
               {erro && (
                 <Alert variant="destructive" className="py-2.5">
                   <AlertCircle className="h-4 w-4" />
@@ -232,6 +253,15 @@ export default function Login() {
                   </>
                 )}
               </Button>
+
+              {modo === 'login' && (
+                <Link
+                  to="/esqueci-senha"
+                  className="text-xs font-medium text-slate-500 hover:text-blue-700 hover:underline"
+                >
+                  Esqueci minha senha
+                </Link>
+              )}
 
               <button
                 type="button"

@@ -4,6 +4,8 @@ import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import Index from './pages/Index'
 import Login from './pages/Login'
+import EsqueciSenha from './pages/EsqueciSenha'
+import RedefinirSenha from './pages/RedefinirSenha'
 import NovoLancamento from './pages/NovoLancamento'
 import Lancamentos from './pages/Lancamentos'
 import Relatorio from './pages/Relatorio'
@@ -28,6 +30,9 @@ const App = () => (
         <Sonner />
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+          <Route path="/reset-password" element={<RedefinirSenha />} />
           <Route
             element={
               <ProtectedRoute>
