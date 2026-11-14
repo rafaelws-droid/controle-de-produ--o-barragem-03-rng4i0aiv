@@ -77,11 +77,12 @@ export function Navbar() {
 
         <div className="flex items-center gap-2 sm:gap-3">
           {user && (
-            <>
-              <div
-                className="flex h-9 w-9 shrink-0 select-none items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white"
-                title={`${user.name} (${user.email})`}
-              >
+            <Link
+              to="/trocar-senha"
+              className="flex items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-slate-100"
+              title="Trocar minha senha"
+            >
+              <div className="flex h-9 w-9 shrink-0 select-none items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
                 {iniciais(user.name, user.email)}
               </div>
               <div className="hidden min-w-0 flex-col items-start text-xs sm:flex">
@@ -92,7 +93,7 @@ export function Navbar() {
                   {ehGestor ? 'Gestor' : 'Lançador'} · {user.email}
                 </span>
               </div>
-            </>
+            </Link>
           )}
           <Button
             variant="outline"

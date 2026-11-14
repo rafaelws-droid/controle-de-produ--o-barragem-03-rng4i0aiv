@@ -6,6 +6,7 @@ import Index from './pages/Index'
 import Login from './pages/Login'
 import EsqueciSenha from './pages/EsqueciSenha'
 import RedefinirSenha from './pages/RedefinirSenha'
+import TrocarSenha from './pages/TrocarSenha'
 import NovoLancamento from './pages/NovoLancamento'
 import Lancamentos from './pages/Lancamentos'
 import Relatorio from './pages/Relatorio'
@@ -93,6 +94,14 @@ const App = () => (
               element={
                 <ErrorBoundary key="operadores">
                   <Operadores />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/trocar-senha"
+              element={
+                <ErrorBoundary key="trocarsenha">
+                  <TrocarSenha />
                 </ErrorBoundary>
               }
             />
