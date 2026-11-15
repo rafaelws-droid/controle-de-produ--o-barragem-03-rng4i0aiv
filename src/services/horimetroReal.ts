@@ -30,6 +30,8 @@ export interface ResumoHorimetro {
   diasComApontamento: number
   ultimaData: string
   diasSemApontamento: number
+  /** dia usado como referencia do "dias parado" (ultimo dia com lancamento) */
+  referencia: string
   leituras: LeituraEquipamento[]
 }
 
@@ -99,7 +101,15 @@ export function montarResumo(
     porEquip.set(chave, dias)
   }
 
-  const diaRef = new Date(ate + 'T00:00:00')
+  // A referencia de "dias parado" NAO pode ser hoje: se o apontamento do sistema
+  // inteiro parou (ex.: ultimo lancamento em 12/11 e hoje 15/11), todos os
+  // equipamentos apareceriam parados — alarme falso em 19 de 19. A referencia e
+  // o ultimo dia com QUALQUER lancamento no periodo.
+  const ultimoDiaGlobal = lancamentos.reduce(
+    (m, l) => (l.data.slice(0, 10) > m ? l.data.slice(0, 10) : m),
+    '',
+  )
+  const referencia = ultimoDiaGlobal || ate
 
   return equipamentos
     .map((eq) => {
@@ -111,8 +121,8 @@ export function montarResumo(
       const horimetroAtual = leituras.reduce((m, l) => Math.max(m, l.horimetroFinal), 0)
       const dataAtual = ultima?.data ?? ''
       const diasSemApontamento = ultima
-        ? Math.max(0, diasEntre(ultima.data, ate) - 1)
-        : diasEntre('2000-01-01', ate)
+        ? Math.max(0, diasEntre(ultima.data, referencia) - 1)
+        : diasEntre(referencia, referencia) + 999 // sem leitura nenhuma no periodo
 
       return {
         equipamento: eq,
@@ -121,8 +131,9 @@ export function montarResumo(
         horas,
         horasPorDia: leituras.length > 0 ? horas / leituras.length : 0,
         diasComApontamento: leituras.length,
-        ultimaData: diaRef ? dataAtual : dataAtual,
+        ultimaData: dataAtual,
         diasSemApontamento,
+        referencia,
         leituras,
       }
     })
