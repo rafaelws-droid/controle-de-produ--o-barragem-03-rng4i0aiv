@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-15T03:59:49.467Z",
+  "generatedAt": "2026-11-15T04:11:34.343Z",
   "collections": [
     {
       "name": "users",
@@ -398,11 +398,11 @@
       "name": "horimetro_equipamentos",
       "type": "base",
       "apiRules": {
-        "list": null,
-        "view": null,
-        "create": null,
-        "update": null,
-        "delete": null
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
       },
       "fields": [
         {
@@ -446,11 +446,11 @@
       "name": "horimetro_leituras",
       "type": "base",
       "apiRules": {
-        "list": null,
-        "view": null,
-        "create": null,
-        "update": null,
-        "delete": null
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
       },
       "fields": [
         {
@@ -503,11 +503,11 @@
       "name": "destinatarios_relatorio",
       "type": "base",
       "apiRules": {
-        "list": null,
-        "view": null,
-        "create": null,
-        "update": null,
-        "delete": null
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
       },
       "fields": [
         {
@@ -549,8 +549,8 @@
       "name": "horimetro_relatorios",
       "type": "base",
       "apiRules": {
-        "list": null,
-        "view": null,
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
         "create": null,
         "update": null,
         "delete": null
