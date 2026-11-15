@@ -12,6 +12,8 @@ import {
   Route,
   CheckCircle2,
   Pencil,
+  Settings2,
+  Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LoadError } from '@/components/LoadError'
 import { SelectNativo } from '@/components/SelectNativo'
 import { useToast } from '@/hooks/use-toast'
+import { useAuth } from '@/contexts/AuthContext'
 import {
   calcularHoras,
   contaViagens,
@@ -28,12 +31,14 @@ import {
   frentesService,
   lancamentosService,
   operadoresService,
+  turnosService,
 } from '@/services/producao'
 import { formatHoras } from '@/lib/exportUtils'
 import {
   FLAGS,
   SERVICOS_COMUNS,
-  TURNOS,
+  TURNOS_PADRAO,
+  type Turno,
   type Equipamento,
   type Frente,
   type Operador,
@@ -48,6 +53,7 @@ export default function NovoLancamento() {
   // Quando a rota traz :id, a tela esta editando um lancamento existente.
   const { id: idEdicao } = useParams<{ id: string }>()
   const editando = !!idEdicao
+  const { ehGestor } = useAuth()
 
   const [frentes, setFrentes] = useState<Frente[]>([])
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([])
@@ -70,18 +76,26 @@ export default function NovoLancamento() {
   const [substituindo, setSubstituindo] = useState('')
   const [observacao, setObservacao] = useState('')
 
+  // Cadastro de turnos: o gestor cria e apaga aqui mesmo, sem sair do formulario.
+  const [turnos, setTurnos] = useState<Turno[]>([])
+  const [novoTurno, setNovoTurno] = useState('')
+  const [gerenciarTurnos, setGerenciarTurnos] = useState(false)
+  const [salvandoTurno, setSalvandoTurno] = useState(false)
+
   const carregar = async () => {
     try {
       setCarregando(true)
       setErroCarga(false)
-      const [fs, es, os] = await Promise.all([
+      const [fs, es, os, ts] = await Promise.all([
         frentesService.getAll(),
         equipamentosService.getAll(),
         operadoresService.getAll(),
+        turnosService.getAll(),
       ])
       setFrentes(fs)
       setEquipamentos(es)
       setOperadores(os)
+      setTurnos(ts)
 
       // Edicao: preenche o formulario com o que ja esta gravado.
       if (idEdicao) {
@@ -151,6 +165,58 @@ export default function NovoLancamento() {
   }, [hi, hf])
 
   const usaViagens = contaViagens(frente)
+
+  const criarTurno = async () => {
+    const nome = novoTurno.trim().toUpperCase()
+    if (!nome) return
+    if (turnos.some((t) => t.nome.toUpperCase() === nome)) {
+      toast({
+        title: 'Turno já existe',
+        description: `${nome} já está cadastrado.`,
+        variant: 'destructive',
+      })
+      return
+    }
+    try {
+      setSalvandoTurno(true)
+      const criado = await turnosService.create({
+        nome,
+        ordem: turnos.length + 1,
+        ativo: true,
+      })
+      setTurnos((lista) => [...lista, criado])
+      setNovoTurno('')
+      setTurno(nome)
+      toast({ title: 'Turno criado', description: `${nome} já está disponível.` })
+    } catch (e) {
+      console.error(e)
+      toast({
+        title: 'Não foi possível criar o turno',
+        description: 'Só o gestor pode cadastrar turno.',
+        variant: 'destructive',
+      })
+    } finally {
+      setSalvandoTurno(false)
+    }
+  }
+
+  const excluirTurno = async (t: Turno) => {
+    const ok = window.confirm(`Apagar o turno "${t.nome}"?`)
+    if (!ok) return
+    try {
+      await turnosService.delete(t.id)
+      setTurnos((lista) => lista.filter((x) => x.id !== t.id))
+      if (turno === t.nome) setTurno('')
+      toast({ title: 'Turno apagado', description: `${t.nome} foi removido.` })
+    } catch (e) {
+      console.error(e)
+      toast({
+        title: 'Não foi possível apagar',
+        description: 'Verifique se o turno já está em uso num lançamento.',
+        variant: 'destructive',
+      })
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -295,16 +361,79 @@ export default function NovoLancamento() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="turno" className="text-xs font-semibold text-slate-700">
-                  Turno
-                </Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="turno" className="text-xs font-semibold text-slate-700">
+                    Turno
+                  </Label>
+                  {ehGestor && (
+                    <button
+                      type="button"
+                      onClick={() => setGerenciarTurnos((v) => !v)}
+                      className="flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:underline"
+                      title="Criar ou apagar turno"
+                    >
+                      <Settings2 className="h-3 w-3" />
+                      {gerenciarTurnos ? 'Fechar' : 'Criar/apagar turno'}
+                    </button>
+                  )}
+                </div>
                 <SelectNativo
                   id="turno"
                   value={turno}
                   onChange={setTurno}
                   placeholder="Selecione o turno"
-                  options={TURNOS.map((t) => ({ value: t, label: t }))}
+                  options={(turnos.length ? turnos.map((t) => t.nome) : TURNOS_PADRAO).map((t) => ({
+                    value: t,
+                    label: t,
+                  }))}
                 />
+
+                {gerenciarTurnos && ehGestor && (
+                  <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2.5">
+                    <div className="flex gap-1.5">
+                      <Input
+                        value={novoTurno}
+                        onChange={(e) => setNovoTurno(e.target.value.toUpperCase())}
+                        placeholder="Ex.: 4º TURNO"
+                        className="h-9"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={criarTurno}
+                        disabled={salvandoTurno || !novoTurno.trim()}
+                        className="h-9 shrink-0 bg-blue-600 text-white hover:bg-blue-700"
+                      >
+                        {salvandoTurno ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <PlusCircle className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </div>
+                    {turnos.length === 0 ? (
+                      <p className="text-[11px] text-slate-500">
+                        Nenhum turno cadastrado — os três turnos padrão continuam valendo.
+                      </p>
+                    ) : (
+                      <div className="divide-y divide-slate-200">
+                        {turnos.map((t) => (
+                          <div key={t.id} className="flex items-center justify-between gap-2 py-1">
+                            <span className="text-xs font-medium text-slate-700">{t.nome}</span>
+                            <button
+                              type="button"
+                              onClick={() => excluirTurno(t)}
+                              className="text-slate-400 hover:text-red-600"
+                              title="Apagar turno"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -446,7 +575,9 @@ export default function NovoLancamento() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-slate-700">Ocorrências do turno</Label>
+              <Label htmlFor="observacao" className="text-xs font-semibold text-slate-700">
+                Ocorrências do turno
+              </Label>
               <div className="flex flex-wrap gap-1.5">
                 {FLAGS.map((f) => {
                   const chave = f.campo as string
@@ -468,6 +599,16 @@ export default function NovoLancamento() {
                   )
                 })}
               </div>
+              <Textarea
+                id="observacao"
+                rows={2}
+                placeholder="Escreva aqui a ocorrência do turno. Ex.: manutenção das 07:00 às 09:00; parada por chuva."
+                value={observacao}
+                onChange={(e) => setObservacao(e.target.value)}
+              />
+              <p className="text-[11px] text-slate-500">
+                Marque as ocorrências acima e/ou escreva o que aconteceu no turno.
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -482,19 +623,6 @@ export default function NovoLancamento() {
                 options={equipamentos
                   .filter((e) => e.id !== equipamentoId)
                   .map((e) => ({ value: e.id, label: e.identificacao }))}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="observacao" className="text-xs font-semibold text-slate-700">
-                Observação (opcional)
-              </Label>
-              <Textarea
-                id="observacao"
-                rows={2}
-                placeholder="Ex.: manutenção das 07:00 às 09:00"
-                value={observacao}
-                onChange={(e) => setObservacao(e.target.value)}
               />
             </div>
           </CardContent>

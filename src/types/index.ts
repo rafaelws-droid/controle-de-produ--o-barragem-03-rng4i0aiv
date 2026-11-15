@@ -40,7 +40,16 @@ export interface Operador {
   ativo?: boolean
 }
 
-export type Turno = '1º TURNO' | '2º TURNO' | '3º TURNO'
+/** Cadastro de turnos: o gestor cria e apaga pela tela. */
+export interface Turno {
+  id: string
+  nome: string
+  ordem?: number
+  ativo?: boolean
+}
+
+/** Turnos que vinham fixos no código — hoje servem de sugestão inicial. */
+export const TURNOS_PADRAO = ['1º TURNO', '2º TURNO', '3º TURNO']
 
 export interface Lancamento {
   id: string
@@ -48,7 +57,7 @@ export interface Lancamento {
   frente: string
   equipamento: string
   operador: string
-  turno: Turno
+  turno: string
   horimetro_inicial: number
   horimetro_final: number
   horas: number
@@ -71,8 +80,6 @@ export interface Lancamento {
     substituindo?: Equipamento
   }
 }
-
-export const TURNOS: Turno[] = ['1º TURNO', '2º TURNO', '3º TURNO']
 
 /** Opções de "observação" que na planilha eram texto livre e agora são toggles. */
 export const FLAGS: { campo: keyof Lancamento; label: string }[] = [

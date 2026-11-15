@@ -1,5 +1,5 @@
 import pb from '@/lib/pocketbase/client'
-import type { Equipamento, Frente, Lancamento, Operador, UsuarioSistema } from '@/types'
+import type { Equipamento, Frente, Lancamento, Operador, Turno, UsuarioSistema } from '@/types'
 
 const EXPAND = 'frente,equipamento,operador,substituindo'
 
@@ -30,6 +30,13 @@ export const equipamentosService = {
   update: (id: string, data: Partial<Equipamento>) =>
     pb.collection('equipamentos').update<Equipamento>(id, data),
   delete: (id: string) => pb.collection('equipamentos').delete(id),
+}
+
+export const turnosService = {
+  getAll: () => pb.collection('turnos').getFullList<Turno>({ sort: 'ordem,nome' }),
+  create: (data: Partial<Turno>) => pb.collection('turnos').create<Turno>(data),
+  update: (id: string, data: Partial<Turno>) => pb.collection('turnos').update<Turno>(id, data),
+  delete: (id: string) => pb.collection('turnos').delete(id),
 }
 
 export const operadoresService = {
