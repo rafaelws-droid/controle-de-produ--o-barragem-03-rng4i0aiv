@@ -835,9 +835,12 @@ function montarAbasFiltro(
   poe(linhasSub, 6, T('Apontamentos', stRotulo))
 
   const r2 = linhasSub + 1
-  poe(r2, 4, F(`SUBTOTAL(9,BASE!K2:K${ultimaBase})`, totalHoras, stValor))
-  poe(r2, 5, F(`SUBTOTAL(9,BASE!L2:L${ultimaBase})`, totalViagens, stValor))
-  poe(r2, 6, F(`SUBTOTAL(3,BASE!A2:A${ultimaBase})`, linhas.length, stValor))
+  // 109 e 103, não 9 e 3: a família 1xx do SUBTOTAL ignora as linhas ESCONDIDAS,
+  // que é o que o filtro faz. Com 9/3 a soma continuaria dando o total do período
+  // e o número não acompanharia o filtro (testado: 55 vs 46).
+  poe(r2, 4, F(`SUBTOTAL(109,BASE!K2:K${ultimaBase})`, totalHoras, stValor))
+  poe(r2, 5, F(`SUBTOTAL(109,BASE!L2:L${ultimaBase})`, totalViagens, stValor))
+  poe(r2, 6, F(`SUBTOTAL(103,BASE!A2:A${ultimaBase})`, linhas.length, stValor))
 
   poe(
     r2 + 2,
