@@ -8,6 +8,7 @@ import EsqueciSenha from './pages/EsqueciSenha'
 import RedefinirSenha from './pages/RedefinirSenha'
 import TrocarSenha from './pages/TrocarSenha'
 import RelatorioHorimetros from './pages/RelatorioHorimetros'
+import Horimetro from './pages/Horimetro'
 import NovoLancamento from './pages/NovoLancamento'
 import Lancamentos from './pages/Lancamentos'
 import Relatorio from './pages/Relatorio'
@@ -103,6 +104,14 @@ const App = () => (
               element={
                 <ErrorBoundary key="horimetros">
                   <RelatorioHorimetros />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/horimetro"
+              element={
+                <ErrorBoundary key="horimetro">
+                  <Horimetro />
                 </ErrorBoundary>
               }
             />

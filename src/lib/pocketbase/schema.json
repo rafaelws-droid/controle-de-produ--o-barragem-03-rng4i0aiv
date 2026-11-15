@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-15T00:09:19.478Z",
+  "generatedAt": "2026-11-15T03:47:48.163Z",
   "collections": [
     {
       "name": "users",
@@ -393,6 +393,204 @@
         }
       ],
       "indexes": []
+    },
+    {
+      "name": "horimetro_equipamentos",
+      "type": "base",
+      "apiRules": {
+        "list": null,
+        "view": null,
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "identificacao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "tipo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ativo",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_horimetro_equipamentos_identificacao ON horimetro_equipamentos (identificacao)"
+      ]
+    },
+    {
+      "name": "horimetro_leituras",
+      "type": "base",
+      "apiRules": {
+        "list": null,
+        "view": null,
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "equipamento",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "horimetro_equipamentos"
+        },
+        {
+          "name": "data",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "horas",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_horimetro_leituras_equipamento ON horimetro_leituras (equipamento)",
+        "CREATE INDEX idx_horimetro_leituras_data ON horimetro_leituras (data)",
+        "CREATE UNIQUE INDEX idx_horimetro_leituras_equip_data ON horimetro_leituras (equipamento, data)"
+      ]
+    },
+    {
+      "name": "destinatarios_relatorio",
+      "type": "base",
+      "apiRules": {
+        "list": null,
+        "view": null,
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "nome",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email",
+          "type": "email",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ativo",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE UNIQUE INDEX idx_destinatarios_email ON destinatarios_relatorio (email)"]
+    },
+    {
+      "name": "horimetro_relatorios",
+      "type": "base",
+      "apiRules": {
+        "list": null,
+        "view": null,
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "semana_inicio",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "semana_fim",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "resumo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "conteudo",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "gerado_em",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_horimetro_relatorios_semana ON horimetro_relatorios (semana_fim)"
+      ]
     }
   ]
 }
