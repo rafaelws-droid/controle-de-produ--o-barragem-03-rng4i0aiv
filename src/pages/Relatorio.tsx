@@ -22,6 +22,7 @@ import {
   nomeEquipamento,
   nomeOperador,
 } from '@/lib/exportUtils'
+import { baixarAmg } from '@/lib/xlsxAmg'
 import type { Equipamento, Frente, Lancamento, Operador } from '@/types'
 
 function primeiroDiaDoMes(): string {
@@ -154,7 +155,7 @@ export default function Relatorio() {
 
   const agrupadoPorEquipamento = equipamento !== ''
 
-  const exportar = (tipo: 'pdf' | 'excel' | 'csv') => {
+  const exportar = (tipo: 'pdf' | 'excel' | 'csv' | 'amg') => {
     if (filtrados.length === 0) {
       toast({
         title: 'Nada para exportar',
@@ -163,9 +164,48 @@ export default function Relatorio() {
       })
       return
     }
-    if (tipo === 'pdf') exportarPdf(filtrados, periodo)
-    if (tipo === 'excel') exportarExcel(filtrados, periodo)
-    if (tipo === 'csv') exportarCsv(filtrados, periodo)
+    if (tipo === 'pdf') {
+      exportarPdf(filtrados, periodo)
+      return
+    }
+    if (tipo === 'excel') {
+      exportarExcel(filtrados, periodo)
+      return
+    }
+    if (tipo === 'csv') {
+      exportarCsv(filtrados, periodo)
+      return
+    }
+
+    // ---- padrão AMG: 9 abas, uma por frente, no mesmo formato da planilha da AMG ----
+    // O filtro por frente precisa estar vazio (o arquivo tem as 9 abas).
+    // O filtro por equipamento continua valendo por dentro da aba dele.
+    if (frente) {
+      const nome = frentes.find((f) => f.id === frente)?.nome || 'a frente'
+      toast({
+        title: 'Tire o filtro de frente',
+        description: `A planilha da AMG tem uma aba por frente. Para exportar em "${nome}", use o Excel comum — ou remova o filtro de frente e exporte as 9 abas.`,
+        variant: 'destructive',
+      })
+      return
+    }
+
+    const garantias: Record<string, number> = {}
+    for (const f of frentes) {
+      if (f.garantia_horas != null) {
+        garantias[f.nome.toUpperCase().replace(/\\s+/g, ' ').trim()] = Number(f.garantia_horas)
+      }
+    }
+
+    const res = baixarAmg(filtrados, de, ate, garantias)
+    toast({
+      title: 'Planilha AMG gerada',
+      description: `${res.lancamentos} lançamentos em ${res.abas.length} abas · ${formatHoras(
+        res.totalHoras,
+      )} h · ${res.totalViagens} viagens${
+        res.semAba > 0 ? ` · ${res.semAba} lançamento(s) com frente fora do padrão AMG` : ''
+      }`,
+    })
   }
 
   if (carregando) {
@@ -224,6 +264,14 @@ export default function Relatorio() {
           >
             <FileText className="h-4 w-4" />
             CSV
+          </Button>
+          <Button
+            onClick={() => exportar('amg')}
+            className="flex items-center gap-2 bg-slate-800 text-white hover:bg-slate-900"
+            title="Mesmo formato da planilha enviada à AMG: 9 abas, uma por frente"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Planilha AMG
           </Button>
         </div>
       </div>
