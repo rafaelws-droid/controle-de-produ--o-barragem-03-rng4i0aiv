@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -10,7 +10,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { FileBarChart, Calendar } from 'lucide-react'
+import { FileBarChart, Calendar, Filter } from 'lucide-react'
+import { SelectNativo, type OpcaoSelect } from '@/components/SelectNativo'
 import { calcularHorasNoPeriodo, formatarSemana } from '@/services/horimetro'
 import { formatHoras, formatDataBR } from '@/lib/exportUtils'
 import type { EquipamentoHorimetro, LeituraHorimetro } from '@/types/horimetro'
@@ -23,13 +24,36 @@ interface Props {
   gerando: boolean
 }
 
+const TODOS = '__todos__'
+
 export function AbaRelatorio({ equipamentos, leituras, semana, onGerar, gerando }: Props) {
+  // Filtro individual por equipamento: vazio = todos.
+  const [equipamentoFiltro, setEquipamentoFiltro] = useState(TODOS)
+
+  const opcoesEquipamentos: OpcaoSelect[] = useMemo(
+    () => [
+      { value: TODOS, label: 'Todos os equipamentos' },
+      ...equipamentos.map((e) => ({ value: e.id, label: e.identificacao })),
+    ],
+    [equipamentos],
+  )
+
+  const equipamentosVisiveis = useMemo(() => {
+    if (equipamentoFiltro === TODOS) return equipamentos
+    return equipamentos.filter((e) => e.id === equipamentoFiltro)
+  }, [equipamentos, equipamentoFiltro])
+
   const linhas = useMemo(
-    () => calcularHorasNoPeriodo(equipamentos, leituras, semana.inicio, semana.fim),
-    [equipamentos, leituras, semana],
+    () => calcularHorasNoPeriodo(equipamentosVisiveis, leituras, semana.inicio, semana.fim),
+    [equipamentosVisiveis, leituras, semana],
   )
   const total = useMemo(() => linhas.reduce((acc, l) => acc + l.horas, 0), [linhas])
   const comLeitura = linhas.filter((l) => l.leituras.length > 0).length
+
+  const selecionado =
+    equipamentoFiltro === TODOS
+      ? null
+      : equipamentos.find((e) => e.id === equipamentoFiltro) || null
 
   return (
     <Card>
@@ -41,7 +65,8 @@ export function AbaRelatorio({ equipamentos, leituras, semana, onGerar, gerando 
           <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
             <Calendar className="h-3.5 w-3.5" /> {formatarSemana(semana.inicio, semana.fim)}
             {' · '}
-            {comLeitura}/{linhas.length} equipamentos com leitura
+            {comLeitura}/{linhas.length} equipamento(s) com leitura
+            {selecionado ? ` · filtro: ${selecionado.identificacao}` : ''}
           </p>
         </div>
         <Button size="sm" onClick={onGerar} disabled={gerando}>
@@ -50,9 +75,31 @@ export function AbaRelatorio({ equipamentos, leituras, semana, onGerar, gerando 
         </Button>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 space-y-1.5">
+          <label
+            htmlFor="filtro-equipamento-relatorio"
+            className="flex items-center gap-1.5 text-xs font-semibold text-slate-700"
+          >
+            <Filter className="h-3.5 w-3.5 text-slate-400" /> Equipamento
+          </label>
+          <SelectNativo
+            id="filtro-equipamento-relatorio"
+            options={opcoesEquipamentos}
+            value={equipamentoFiltro}
+            onChange={setEquipamentoFiltro}
+            placeholder="Selecione o equipamento"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Escolha um equipamento para ver só as horas dele no período, ou deixe em "Todos" para o
+            relatório completo.
+          </p>
+        </div>
+
         {linhas.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
-            Nenhum equipamento cadastrado ainda.
+            {selecionado
+              ? `Nenhuma leitura no período para ${selecionado.identificacao}.`
+              : 'Nenhum equipamento cadastrado ainda.'}
           </p>
         ) : (
           <>
@@ -92,7 +139,7 @@ export function AbaRelatorio({ equipamentos, leituras, semana, onGerar, gerando 
             </div>
             <div className="mt-4 flex items-center justify-end gap-2">
               <Badge variant="outline" className="text-sm">
-                Total: {formatHoras(total)} h
+                Total{selecionado ? ` (${selecionado.identificacao})` : ''}: {formatHoras(total)} h
               </Badge>
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
