@@ -25,13 +25,28 @@ function iniciais(name: string, email: string): string {
   return (partes[0][0] + partes[1][0]).toUpperCase()
 }
 
-const NAV = [
+interface ItemNav {
+  label: string
+  path: string
+  icon: typeof LayoutDashboard
+  soGestor?: boolean
+  /** rotas que tambem marcam este item como ativo */
+  tambemAtivo?: string[]
+}
+
+const NAV: ItemNav[] = [
   { label: 'Início', path: '/', icon: LayoutDashboard },
   { label: 'Novo Lançamento', path: '/novo', icon: PlusCircle },
   { label: 'Lançamentos', path: '/lancamentos', icon: History },
-  { label: 'Relatório', path: '/relatorio', icon: FileBarChart },
+  // Producao e horimetros ficam na MESMA tela, em abas: sao dois assuntos de
+  // relatorio, nao dois sistemas. As rotas antigas continuam validas.
+  {
+    label: 'Relatórios',
+    path: '/relatorios',
+    icon: FileBarChart,
+    tambemAtivo: ['/relatorio', '/horimetros'],
+  },
   { label: 'Horímetro', path: '/horimetro', icon: Gauge },
-  { label: 'Rel. Horímetros', path: '/horimetros', icon: Gauge },
   { label: 'Equipamentos', path: '/equipamentos', icon: Truck },
   { label: 'Operadores', path: '/operadores', icon: Users },
   { label: 'Acessos', path: '/usuarios', icon: ShieldCheck, soGestor: true },
@@ -60,7 +75,11 @@ export function Navbar() {
         <nav className="hidden items-center gap-1 md:flex">
           {itens.map((item) => {
             const Icon = item.icon
-            const ativo = location.pathname === item.path
+            // Item com rotas irmas fica marcado tambem quando uma delas esta aberta,
+            // senao o menu parece nao ter nada selecionado.
+            const ativo =
+              location.pathname === item.path ||
+              (item.tambemAtivo?.includes(location.pathname) ?? false)
             return (
               <Link
                 key={item.path}
@@ -115,7 +134,9 @@ export function Navbar() {
         <div className="grid grid-cols-3 gap-1 text-center">
           {itens.map((item) => {
             const Icon = item.icon
-            const ativo = location.pathname === item.path
+            const ativo =
+              location.pathname === item.path ||
+              (item.tambemAtivo?.includes(location.pathname) ?? false)
             return (
               <Link
                 key={item.path}

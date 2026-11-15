@@ -47,7 +47,9 @@ export default function Relatorio() {
   // todo o intervalo com dados — senao abriria zerada num mes sem lancamento.
   const [periodoAuto, setPeriodoAuto] = useState(!params.get('de') && !params.get('ate'))
   const [frente, setFrente] = useState(params.get('frente') || '')
-  const [equipamento, setEquipamento] = useState('')
+  // O filtro por equipamento vem pela URL quando a pessoa clica em "Ver" no
+  // relatorio de horimetros. Antes ele era ignorado e abria a frota inteira.
+  const [equipamento, setEquipamento] = useState(params.get('equipamento') || '')
   const [operador, setOperador] = useState('')
 
   const carregar = async () => {
@@ -122,6 +124,35 @@ export default function Relatorio() {
     }
     return [...mapa.values()].sort((a, b) => b.horas - a.horas)
   }, [filtrados])
+
+  /**
+   * Resumo por equipamento. E o que faz sentido quando a pessoa chega aqui
+   * filtrada por um equipamento so — resumo por frente mostraria uma linha
+   * com a frente inteira e esconderia o que interessa.
+   */
+  const porEquipamento = useMemo(() => {
+    const mapa = new Map<
+      string,
+      { nome: string; categoria: string; horas: number; viagens: number; qtd: number }
+    >()
+    for (const l of filtrados) {
+      const chave = l.equipamento
+      const item = mapa.get(chave) || {
+        nome: l.expand?.equipamento?.identificacao || nomeEquipamento(l),
+        categoria: l.expand?.equipamento?.categoria || '—',
+        horas: 0,
+        viagens: 0,
+        qtd: 0,
+      }
+      item.horas += l.horas || 0
+      item.viagens += l.viagens || 0
+      item.qtd += 1
+      mapa.set(chave, item)
+    }
+    return [...mapa.entries()].map(([id, v]) => ({ id, ...v })).sort((a, b) => b.horas - a.horas)
+  }, [filtrados])
+
+  const agrupadoPorEquipamento = equipamento !== ''
 
   const exportar = (tipo: 'pdf' | 'excel' | 'csv') => {
     if (filtrados.length === 0) {
@@ -269,47 +300,95 @@ export default function Relatorio() {
         </CardContent>
       </Card>
 
-      {/* Resumo por frente com garantia */}
+      {/* Resumo: por frente, ou por equipamento quando a consulta esta filtrada */}
       <Card className="border-slate-200">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-900">
             <Gauge className="h-4 w-4 text-blue-600" />
-            Resumo por frente
+            {agrupadoPorEquipamento ? 'Resumo por equipamento' : 'Resumo por frente'}
           </CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
-          <table className="w-full min-w-[620px] text-left text-xs">
-            <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
-              <tr>
-                <th className="px-3 py-2">Frente</th>
-                <th className="px-3 py-2 text-right">Lançamentos</th>
-                <th className="px-3 py-2 text-right">Horas</th>
-                <th className="px-3 py-2 text-right">Viagens</th>
-                <th className="px-3 py-2 text-right">Garantia mensal</th>
-                <th className="px-3 py-2 text-right">% da garantia</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {porFrente.map((f) => (
-                <tr key={f.nome}>
-                  <td className="px-3 py-2 font-medium text-slate-800">{f.nome}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-600">{f.qtd}</td>
-                  <td className="px-3 py-2 text-right font-bold tabular-nums text-blue-700">
-                    {formatHoras(f.horas)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-600">
-                    {f.viagens || '-'}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-slate-500">
-                    {f.garantia ? `${formatHoras(f.garantia)} h` : '-'}
+          {agrupadoPorEquipamento ? (
+            <table className="w-full min-w-[620px] text-left text-xs">
+              <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
+                <tr>
+                  <th className="px-3 py-2">Equipamento</th>
+                  <th className="px-3 py-2">Categoria</th>
+                  <th className="px-3 py-2 text-right">Lançamentos</th>
+                  <th className="px-3 py-2 text-right">Horas</th>
+                  <th className="px-3 py-2 text-right">Viagens</th>
+                  <th className="px-3 py-2 text-right">Média h/lanç.</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {porEquipamento.map((e) => (
+                  <tr key={e.id}>
+                    <td className="px-3 py-2 font-medium text-slate-800">{e.nome}</td>
+                    <td className="px-3 py-2 text-slate-600">{e.categoria}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-600">{e.qtd}</td>
+                    <td className="px-3 py-2 text-right font-bold tabular-nums text-blue-700">
+                      {formatHoras(e.horas)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-600">
+                      {e.viagens || '-'}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-500">
+                      {e.qtd > 0 ? formatHoras(e.horas / e.qtd) : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-slate-50 font-bold text-slate-800">
+                <tr>
+                  <td className="px-3 py-2" colSpan={2}>
+                    TOTAL ({porEquipamento.length})
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">
-                    {f.garantia ? `${((f.horas / f.garantia) * 100).toFixed(0)}%` : '-'}
+                    {porEquipamento.reduce((a, e) => a + e.qtd, 0)}
                   </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-blue-700">
+                    {formatHoras(totalHoras)}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">{totalViagens}</td>
+                  <td></td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </tfoot>
+            </table>
+          ) : (
+            <table className="w-full min-w-[620px] text-left text-xs">
+              <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
+                <tr>
+                  <th className="px-3 py-2">Frente</th>
+                  <th className="px-3 py-2 text-right">Lançamentos</th>
+                  <th className="px-3 py-2 text-right">Horas</th>
+                  <th className="px-3 py-2 text-right">Viagens</th>
+                  <th className="px-3 py-2 text-right">Garantia mensal</th>
+                  <th className="px-3 py-2 text-right">% da garantia</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {porFrente.map((f) => (
+                  <tr key={f.nome}>
+                    <td className="px-3 py-2 font-medium text-slate-800">{f.nome}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-600">{f.qtd}</td>
+                    <td className="px-3 py-2 text-right font-bold tabular-nums text-blue-700">
+                      {formatHoras(f.horas)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-600">
+                      {f.viagens || '-'}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-500">
+                      {f.garantia ? `${formatHoras(f.garantia)} h` : '-'}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {f.garantia ? `${((f.horas / f.garantia) * 100).toFixed(0)}%` : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </CardContent>
       </Card>
 

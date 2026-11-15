@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   CalendarDays,
   ArrowUpRight,
+  Filter,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,6 +38,8 @@ function primeiroDiaDoMesCorrente(): string {
 
 type Filtro = 'todos' | 'operacao' | 'atencao' | 'semapontamento'
 
+const TODOS = '__todos__'
+
 export default function RelatorioHorimetros() {
   const { toast } = useToast()
 
@@ -51,6 +54,8 @@ export default function RelatorioHorimetros() {
   const [de, setDe] = useState(primeiroDiaDoMesCorrente())
   const [ate, setAte] = useState(hojeISO())
   const [filtro, setFiltro] = useState<Filtro>('todos')
+  // Filtro por equipamento individual: __todos__ = frota inteira.
+  const [equipamentoFiltro, setEquipamentoFiltro] = useState(TODOS)
   const [periodoAuto, setPeriodoAuto] = useState(true)
 
   const carregar = async () => {
@@ -87,11 +92,16 @@ export default function RelatorioHorimetros() {
     [lancamentos, de, ate],
   )
 
-  const linhas = useMemo(
-    () => montarHorimetros(eqs, noPeriodo, ate || hojeISO()),
-    [eqs, noPeriodo, ate],
+  // Um equipamento escolhido: so ele entra no calculo. Caso contrario, a frota.
+  const equipamentosBase = useMemo(
+    () => (equipamentoFiltro === TODOS ? eqs : eqs.filter((e) => e.id === equipamentoFiltro)),
+    [eqs, equipamentoFiltro],
   )
-  const resumo = useMemo(() => resumoHorimetros(linhas), [linhas])
+
+  const linhas = useMemo(
+    () => montarHorimetros(equipamentosBase, noPeriodo, ate || hojeISO()),
+    [equipamentosBase, noPeriodo, ate],
+  )
 
   const visiveis = useMemo(() => {
     if (filtro === 'operacao') return linhas.filter((l) => situacao(l) === 'EM OPERAÇÃO')
@@ -99,6 +109,16 @@ export default function RelatorioHorimetros() {
     if (filtro === 'semapontamento') return linhas.filter((l) => l.semLeitura)
     return linhas
   }, [linhas, filtro])
+
+  // Os cartoes refletem exatamente o que esta na tabela — senao o numero do topo
+  // contradiz a lista quando ha filtro de equipamento.
+  const resumo = useMemo(() => resumoHorimetros(visiveis), [visiveis])
+
+  const selecionado = useMemo(
+    () =>
+      equipamentoFiltro === TODOS ? null : (eqs.find((e) => e.id === equipamentoFiltro) ?? null),
+    [eqs, equipamentoFiltro],
+  )
 
   const periodo = `${de ? formatDataBR(de) : 'início'} a ${ate ? formatDataBR(ate) : 'hoje'}`
 
@@ -172,6 +192,7 @@ export default function RelatorioHorimetros() {
             Horímetros — Manutenção
           </h1>
           <p className="mt-1 text-sm text-slate-600">
+            {selecionado ? `${selecionado.identificacao} · ` : ''}
             {periodo} • {resumo.comApontamento} de {resumo.equipamentos} equipamentos com
             apontamento • {formatHoras(resumo.horas)} h no período
           </p>
@@ -203,7 +224,7 @@ export default function RelatorioHorimetros() {
       </div>
 
       <Card className="border-slate-200">
-        <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-slate-700">De</Label>
             <Input
@@ -227,13 +248,31 @@ export default function RelatorioHorimetros() {
             />
           </div>
           <div className="space-y-1.5">
+            <Label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+              <Filter className="h-3.5 w-3.5 text-slate-400" />
+              Equipamento
+            </Label>
+            <select
+              value={equipamentoFiltro}
+              onChange={(e) => setEquipamentoFiltro(e.target.value)}
+              className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900"
+            >
+              <option value={TODOS}>Todos os equipamentos</option>
+              {eqs.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.identificacao}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-slate-700">Mostrar</Label>
             <select
               value={filtro}
               onChange={(e) => setFiltro(e.target.value as Filtro)}
               className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900"
             >
-              <option value="todos">Todos os equipamentos</option>
+              <option value="todos">Todos</option>
               <option value="operacao">Só em operação</option>
               <option value="atencao">Só com manutenção</option>
               <option value="semapontamento">Só sem apontamento</option>
@@ -286,9 +325,15 @@ export default function RelatorioHorimetros() {
       {visiveis.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
           <CalendarDays className="mb-3 h-12 w-12 text-slate-300" />
-          <h3 className="text-base font-semibold text-slate-800">Nenhum equipamento</h3>
+          <h3 className="text-base font-semibold text-slate-800">
+            {selecionado
+              ? `Sem apontamento para ${selecionado.identificacao}`
+              : 'Nenhum equipamento'}
+          </h3>
           <p className="mt-1 max-w-sm text-sm text-slate-500">
-            Não há equipamento com esse filtro no período escolhido.
+            {selecionado
+              ? 'Este equipamento não tem lançamento no período escolhido. Amplie o período ou escolha outro.'
+              : 'Não há equipamento com esse filtro no período escolhido.'}
           </p>
         </div>
       ) : (
@@ -364,7 +409,7 @@ export default function RelatorioHorimetros() {
             <tfoot className="bg-slate-50 font-bold text-slate-800">
               <tr>
                 <td className="px-3 py-2" colSpan={4}>
-                  TOTAL ({visiveis.length} equipamentos)
+                  TOTAL ({visiveis.length} equipamento{visiveis.length === 1 ? '' : 's'})
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums text-blue-700">
                   {formatHoras(visiveis.reduce((a, l) => a + l.horasPeriodo, 0))}
