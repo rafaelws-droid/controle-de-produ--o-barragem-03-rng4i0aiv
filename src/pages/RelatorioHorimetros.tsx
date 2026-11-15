@@ -45,9 +45,13 @@ export default function RelatorioHorimetros() {
   const [carregando, setCarregando] = useState(true)
   const [erroCarga, setErroCarga] = useState(false)
 
+  // O periodo comeca no mes corrente, mas assim que os lancamentos chegam ele
+  // passa a cobrir TODO o periodo com dados. Sem isso a tela abriria zerada
+  // quando o mes corrente ainda nao tem apontamento (ex.: consulta retroativa).
   const [de, setDe] = useState(primeiroDiaDoMesCorrente())
   const [ate, setAte] = useState(hojeISO())
   const [filtro, setFiltro] = useState<Filtro>('todos')
+  const [periodoAuto, setPeriodoAuto] = useState(true)
 
   const carregar = async () => {
     try {
@@ -59,6 +63,13 @@ export default function RelatorioHorimetros() {
       ])
       setEqs(listaEq)
       setLancamentos(listaLa)
+
+      // Ajusta o periodo inicial para o intervalo que realmente tem dados.
+      if (listaLa.length > 0) {
+        const datas = listaLa.map((l) => l.data).sort()
+        setDe((atual) => (periodoAuto ? datas[0] : atual))
+        setAte((atual) => (periodoAuto ? datas[datas.length - 1] : atual))
+      }
     } catch (e) {
       console.error(e)
       setErroCarga(true)
@@ -195,11 +206,25 @@ export default function RelatorioHorimetros() {
         <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-slate-700">De</Label>
-            <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} />
+            <Input
+              type="date"
+              value={de}
+              onChange={(e) => {
+                setPeriodoAuto(false)
+                setDe(e.target.value)
+              }}
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-slate-700">Até</Label>
-            <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
+            <Input
+              type="date"
+              value={ate}
+              onChange={(e) => {
+                setPeriodoAuto(false)
+                setAte(e.target.value)
+              }}
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-slate-700">Mostrar</Label>

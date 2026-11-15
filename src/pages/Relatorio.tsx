@@ -43,6 +43,9 @@ export default function Relatorio() {
 
   const [de, setDe] = useState(params.get('de') || primeiroDiaDoMes())
   const [ate, setAte] = useState(params.get('ate') || hojeISO())
+  // Quando a tela abre sem periodo vindo do Painel, o periodo passa a cobrir
+  // todo o intervalo com dados — senao abriria zerada num mes sem lancamento.
+  const [periodoAuto, setPeriodoAuto] = useState(!params.get('de') && !params.get('ate'))
   const [frente, setFrente] = useState(params.get('frente') || '')
   const [equipamento, setEquipamento] = useState('')
   const [operador, setOperador] = useState('')
@@ -61,6 +64,12 @@ export default function Relatorio() {
       setFrentes(fs)
       setEquipamentos(es)
       setOperadores(os)
+
+      if (periodoAuto && ls.length > 0) {
+        const datas = ls.map((l) => l.data).sort()
+        setDe(datas[0])
+        setAte(datas[datas.length - 1])
+      }
     } catch (e) {
       console.error(e)
       setErroCarga(true)
@@ -192,11 +201,25 @@ export default function Relatorio() {
         <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-slate-700">De</Label>
-            <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} />
+            <Input
+              type="date"
+              value={de}
+              onChange={(e) => {
+                setPeriodoAuto(false)
+                setDe(e.target.value)
+              }}
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-slate-700">Até</Label>
-            <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
+            <Input
+              type="date"
+              value={ate}
+              onChange={(e) => {
+                setPeriodoAuto(false)
+                setAte(e.target.value)
+              }}
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-slate-700">Frente</Label>
