@@ -15,6 +15,8 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { LoadError } from '@/components/LoadError'
 import { frentesService, lancamentosService } from '@/services/producao'
 import { formatDataBR, formatHoras, nomeEquipamento, nomeOperador } from '@/lib/exportUtils'
@@ -51,7 +53,10 @@ function mesCivil(): { de: string; ate: string; rotulo: string } {
   }
 }
 
-type Modo = 'ciclo' | 'mes' | 'tudo'
+type Modo = 'ciclo' | 'mes' | 'tudo' | 'periodo'
+
+/** Data ISO de hoje, no fuso do aparelho. */
+const hojeISO = () => iso(new Date())
 
 export default function Index() {
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([])
@@ -59,6 +64,11 @@ export default function Index() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState(false)
   const [modo, setModo] = useState<Modo>('ciclo')
+
+  // Intervalo livre: o mesmo "De / Ate" do relatorio, trazido para o painel.
+  // Comeca preenchido com o ciclo atual, para o campo nunca abrir vazio.
+  const [deCustom, setDeCustom] = useState(() => cicloAtual().de)
+  const [ateCustom, setAteCustom] = useState(() => hojeISO())
 
   const carregar = async () => {
     try {
@@ -82,6 +92,17 @@ export default function Index() {
   const periodo = useMemo(() => {
     if (modo === 'ciclo') return cicloAtual()
     if (modo === 'mes') return mesCivil()
+    if (modo === 'periodo') {
+      // O usuario escolheu as duas pontas na mao.
+      const de = deCustom
+      const ate = ateCustom
+      if (!de && !ate) return { de: '', ate: '', rotulo: 'Periodo em branco' }
+      return {
+        de,
+        ate,
+        rotulo: `${de ? formatDataBR(de) : 'inicio'} a ${ate ? formatDataBR(ate) : 'hoje'}`,
+      }
+    }
     const datas = lancamentos.map((l) => l.data).sort()
     if (datas.length === 0) return { de: '', ate: '', rotulo: 'Sem lancamentos' }
     return {
@@ -89,15 +110,17 @@ export default function Index() {
       ate: datas[datas.length - 1],
       rotulo: `Tudo: ${formatDataBR(datas[0])} a ${formatDataBR(datas[datas.length - 1])}`,
     }
-  }, [modo, lancamentos])
+  }, [modo, lancamentos, deCustom, ateCustom])
 
-  const doPeriodo = useMemo(
-    () =>
-      lancamentos.filter(
-        (l) => (!periodo.de || l.data >= periodo.de) && (!periodo.ate || l.data <= periodo.ate),
-      ),
-    [lancamentos, periodo],
-  )
+  /** Intervalo invalido: o usuario inverteu as datas. */
+  const intervaloInvalido = modo === 'periodo' && !!deCustom && !!ateCustom && deCustom > ateCustom
+
+  const doPeriodo = useMemo(() => {
+    if (intervaloInvalido) return []
+    return lancamentos.filter(
+      (l) => (!periodo.de || l.data >= periodo.de) && (!periodo.ate || l.data <= periodo.ate),
+    )
+  }, [lancamentos, periodo, intervaloInvalido])
 
   const hoje = iso(new Date())
   const deHoje = useMemo(() => lancamentos.filter((l) => l.data === hoje), [lancamentos, hoje])
@@ -132,9 +155,13 @@ export default function Index() {
       .sort((a, b) => b.pct - a.pct)
   }, [doPeriodo, frentes])
 
+  /**
+   * "Ultimos lancamentos" passa a respeitar o periodo escolhido: consultando
+   * um mes antigo, a lista mostra o que foi lancado naquele mes, nao o de hoje.
+   */
   const recentes = useMemo(
-    () => [...lancamentos].sort((a, b) => (a.data < b.data ? 1 : -1)).slice(0, 6),
-    [lancamentos],
+    () => [...doPeriodo].sort((a, b) => (a.data < b.data ? 1 : -1)).slice(0, 6),
+    [doPeriodo],
   )
 
   if (carregando) {
@@ -212,6 +239,19 @@ export default function Index() {
             </Button>
             <Button
               size="sm"
+              variant={modo === 'periodo' ? 'default' : 'outline'}
+              onClick={() => setModo('periodo')}
+              className={
+                modo === 'periodo'
+                  ? 'flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700'
+                  : 'flex items-center gap-2'
+              }
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              Escolher periodo
+            </Button>
+            <Button
+              size="sm"
               variant={modo === 'tudo' ? 'default' : 'outline'}
               onClick={() => setModo('tudo')}
               className={modo === 'tudo' ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}
@@ -220,7 +260,92 @@ export default function Index() {
             </Button>
           </div>
         </CardContent>
+
+        {/* Filtro de datas: aparece so quando "Escolher periodo" esta ativo. */}
+        {modo === 'periodo' && (
+          <CardContent className="border-t border-slate-100 bg-slate-50/60 p-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="de" className="text-xs font-semibold text-slate-700">
+                  De
+                </Label>
+                <Input
+                  id="de"
+                  type="date"
+                  value={deCustom}
+                  max={ateCustom || undefined}
+                  onChange={(e) => setDeCustom(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ate" className="text-xs font-semibold text-slate-700">
+                  Ate
+                </Label>
+                <Input
+                  id="ate"
+                  type="date"
+                  value={ateCustom}
+                  min={deCustom || undefined}
+                  onChange={(e) => setAteCustom(e.target.value)}
+                />
+              </div>
+              <div className="flex items-end gap-2 sm:col-span-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const c = cicloAtual()
+                    setDeCustom(c.de)
+                    setAteCustom(c.ate)
+                  }}
+                >
+                  Ciclo atual
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const h = new Date()
+                    const inicio = new Date(h.getFullYear(), h.getMonth(), 1)
+                    setDeCustom(iso(inicio))
+                    setAteCustom(hojeISO())
+                  }}
+                >
+                  Este mes
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const h = new Date()
+                    const inicio = new Date(h.getFullYear(), h.getMonth() - 1, 1)
+                    const fim = new Date(h.getFullYear(), h.getMonth(), 0)
+                    setDeCustom(iso(inicio))
+                    setAteCustom(iso(fim))
+                  }}
+                >
+                  Mes passado
+                </Button>
+              </div>
+            </div>
+
+            <p className="mt-2 text-[11px] text-slate-500">
+              Escolha as duas datas. Todos os numeros e a lista de lancamentos abaixo passam a somar
+              somente o intervalo selecionado. O Painel abre sempre no ciclo do contrato (dia 20 a
+              dia 19), que e o periodo de faturamento.
+            </p>
+          </CardContent>
+        )}
       </Card>
+
+      {intervaloInvalido && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="flex items-center gap-2 p-3 text-xs font-medium text-amber-800">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+            A data inicial e maior que a final. Ajuste o intervalo para ver os dados.
+          </CardContent>
+        </Card>
+      )}
 
       {/* Indicadores do periodo */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -276,6 +401,14 @@ export default function Index() {
             <p className="text-[11px] text-slate-500">
               Percentual calculado sobre {periodo.rotulo.toLowerCase()}
             </p>
+            {doPeriodo.length > 0 && (
+              <Link
+                to={`/relatorio?de=${periodo.de}&ate=${periodo.ate}`}
+                className="text-[11px] font-medium text-blue-600 hover:underline"
+              >
+                Abrir este periodo no relatorio
+              </Link>
+            )}
           </CardHeader>
           <CardContent className="space-y-3">
             {progresso.length === 0 && (
