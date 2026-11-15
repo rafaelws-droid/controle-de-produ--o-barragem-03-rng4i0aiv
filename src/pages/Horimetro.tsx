@@ -16,8 +16,10 @@ import type {
 import { AbaEquipamentos } from '@/components/horimetro/AbaEquipamentos'
 import { AbaRelatorio } from '@/components/horimetro/AbaRelatorio'
 import { AbaDestinatarios } from '@/components/horimetro/AbaDestinatarios'
+import { useToast } from '@/hooks/use-toast'
 
 export function Horimetro() {
+  const { toast } = useToast()
   const [erro, setErro] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [equipamentos, setEquipamentos] = useState<EquipamentoHorimetro[]>([])

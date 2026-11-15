@@ -164,7 +164,7 @@ export function AbaEquipamentos({
 
   function abrirNovaLeitura() {
     setEditandoLeitura(null)
-    setFormLeitura({ ...LEITURA_VAZIA, equipamento: optionsEquipamentos[0]?.valor || '' })
+    setFormLeitura({ ...LEITURA_VAZIA, equipamento: optionsEquipamentos[0]?.value || '' })
     setDialogLeitura(true)
   }
 
