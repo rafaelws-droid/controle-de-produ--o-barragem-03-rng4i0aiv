@@ -11,6 +11,7 @@ import {
   HardHat,
   ShieldCheck,
   Gauge,
+  BarChart3,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -36,6 +37,8 @@ interface ItemNav {
 
 const NAV: ItemNav[] = [
   { label: 'Início', path: '/', icon: LayoutDashboard },
+  // Dashboard: leitura visual com filtro de equipamento, frente, operador e periodo.
+  { label: 'Dashboard', path: '/dashboard', icon: BarChart3 },
   { label: 'Novo Lançamento', path: '/novo', icon: PlusCircle },
   { label: 'Lançamentos', path: '/lancamentos', icon: History },
   // Producao e horimetros ficam na MESMA tela, em abas: sao dois assuntos de

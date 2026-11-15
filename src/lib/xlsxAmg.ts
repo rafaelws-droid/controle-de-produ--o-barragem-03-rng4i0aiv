@@ -495,8 +495,15 @@ function xmlAba(spec: AbaSpec, linhas: LinhaAba[], merges: string[], ncol: numbe
     : ''
   const ultima = linhas[linhas.length - 1]?.row ?? 4
 
+  // Filtro e congelamento: quem recebe o arquivo precisa filtrar por equipamento,
+  // data, operador, turno, viagens — qualquer coluna. O cabeçalho (linhas 1 a 3)
+  // fica congelado para não sumir quando a lista tem centenas de linhas.
+  const ultimaDados = ultima - 1
+  const autoFiltro = ultimaDados >= 4 ? `<autoFilter ref="A3:${letra(ncol)}${ultimaDados}"/>` : ''
+  const paneCongelado = `<sheetViews><sheetView workbookViewId="0"><pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A4" sqref="A4"/></sheetView></sheetViews>`
+
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${letra(ncol)}${ultima}"/><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="15" defaultColWidth="8.43"/><cols>${cols}</cols><sheetData>${rows}</sheetData>${mc}<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>`
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${letra(ncol)}${ultima}"/>${paneCongelado}<sheetFormatPr defaultRowHeight="15" defaultColWidth="8.43"/><cols>${cols}</cols><sheetData>${rows}</sheetData>${autoFiltro}${mc}<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>`
 }
 
 // ---------------------------------------------------------------- montagem

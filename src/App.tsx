@@ -9,6 +9,7 @@ import RedefinirSenha from './pages/RedefinirSenha'
 import TrocarSenha from './pages/TrocarSenha'
 import RelatorioHorimetros from './pages/RelatorioHorimetros'
 import Relatorios from './pages/Relatorios'
+import Dashboard from './pages/Dashboard'
 import Horimetro from './pages/Horimetro'
 import NovoLancamento from './pages/NovoLancamento'
 import Lancamentos from './pages/Lancamentos'
@@ -73,6 +74,14 @@ const App = () => (
               element={
                 <ErrorBoundary key="lancamentos">
                   <Lancamentos />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={
+                <ErrorBoundary key="dashboard">
+                  <Dashboard />
                 </ErrorBoundary>
               }
             />
