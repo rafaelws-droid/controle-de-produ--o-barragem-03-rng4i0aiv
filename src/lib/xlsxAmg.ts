@@ -3,36 +3,44 @@
  *
  * Referência: `Controle_de_Produc_a_o_Barragem_03_setembro-outubro_de_2026.xlsx`.
  *
- * Cada detalhe abaixo foi LIDO da original célula por célula, não inventado:
- *  - 9 abas, nesta ordem, com os nomes exatos (inclusive o espaço em "CAMINHÕES _DESAGUAMENTO");
- *  - linha 1: título mesclado A1:D2 e o rótulo "CONTROLE DIÁRIO DE PRODUÇÃO ... <FRENTE>"
+ * O arquivo tem 11 abas:
+ *   1..9  — as abas originais da AMG, uma por frente, idênticas à original
+ *           (nome, mesclagens, larguras, alturas, fonte, cores, bordas, formatos
+ *           e as fórmulas =SUM(F-E) e =SUM(G4:Gn));
+ *   10    — BASE: todos os lançamentos do período numa tabela plana e filtrável;
+ *   11    — PAINEL: cartões do período, ranking por equipamento e a soma do que
+ *           está filtrado (SUBTOTAL, que acompanha o filtro).
+ *
+ * As duas últimas são acréscimo: não alteram nenhuma das 9 originais.
+ *
+ * Cada detalhe visual foi LIDO da original célula por célula, não inventado:
+ *  - linha 1: título mesclado A1:D2 e o rótulo "CONTROLE DIÁRIO DE PRODUÇÃO …"
  *    em E1:G1 — a sequência de espaços no meio faz parte do arquivo;
  *  - linha 2: "GARANTIA DE HORAS MENSAIS" em E2:F2 e o valor em G2, em vermelho;
  *  - linha 3: cabeçalho, MOTORISTA nas abas de caminhão e OPERADOR nas demais;
  *  - dados da linha 4 em diante, altura 15,75;
- *  - última linha mesclada A:F com "TOTAL HORAS" (ou "TOTAL HORAS E VIAGENS") e as
- *    fórmulas =SUM(G4:Gn) e =SUM(H4:Hn);
- *  - fonte Red Hat Display 11; preenchimentos EEEEEE (cabeçalho), E7E6E6 (horímetro inicial/final
- *    na aba 24 HORAS), FBE5D6 (coluna TOTAL HORAS), C6DEB5 (TOTAL VIAGENS), DDE8CB (linha de
- *    total), DEE6EF (título);
- *  - bordas medium/dotted do corpo, diferentes na linha de total;
- *  - alturas 39,75 / 30,75 / 35,25 e a largura de cada coluna;
+ *  - última linha mesclada A:F com "TOTAL HORAS" (ou "TOTAL HORAS E VIAGENS");
+ *  - fonte Red Hat Display 11 com preto explícito; preenchimentos EEEEEE,
+ *    E7E6E6, FBE5D6, C6DEB5, DDE8CB e DEE6EF; bordas medium/dotted;
  *  - a aba do PIPA guarda horímetro como DURAÇÃO ([h]:mm:ss).
  *
- * Defeitos da própria original reproduzidos de propósito, para o arquivo sair igual:
+ * Defeitos da própria original reproduzidos de propósito, para sair igual:
  *  - "HORIM FINAL" sem acento na aba ESCAVADEIRA_CARREGAMENTO;
  *  - "TOTAL HORAS " com espaço no fim em três abas;
  *  - "PERÍODO 20/09 19/10/2026" sem o "á" na aba ROLO_COMPACTADOR;
- *  - formato de moeda (R$) aplicado em algumas colunas de texto — invisível no texto,
- *    mas é o que está no arquivo.
+ *  - formato de moeda (R$) em colunas de texto — invisível, mas está lá.
  *
- * Nada é estimado nem corrigido: o dado do Controle de Produção vai como está e o
- * total é a soma das linhas.
+ * ARMADILHAS QUE JÁ CUSTARAM ERRO (não repetir):
+ *  - fórmula no XML do .xlsx vai em INGLÊS e com VÍRGULA. "SUBTOTAL(9;...)" com
+ *    ponto e vírgula gera #VALUE! ao abrir;
+ *  - a chave do cache de estilos tem que incluir o numFmt resolvido, senão dois
+ *    formatos diferentes dividem o mesmo índice e o Excel mostra General;
+ *  - `cod_material` do SisUM não é chave (o código 002 repete em 38 cadastros);
+ *  - a aba BASE precisa do nome reservado `_xlnm._FilterDatabase` em
+ *    workbook.xml, senão o Excel perde o filtro ao reabrir.
  */
 
-// ---------------------------------------------------------------- especificação
-
-type Fmt = null | 'DATA' | 'DURACAO' | 'BRL'
+type Fmt = null | 'DATA' | 'DURACAO' | 'BRL' | 'INTEIRO' | 'DUAS'
 
 interface AbaSpec {
   frente: string
@@ -336,13 +344,8 @@ const ddmmaaaa = (iso: string): string => {
   return `${d}/${m}/${a}`
 }
 
-// ---------------------------------------------------------------- registro de estilos
+// ---------------------------------------------------------------- estilos
 
-/**
- * Estilos montados em tempo de execução, iguais aos da original. Cada combinação
- * (preenchimento, borda, formato, negrito, vermelho) vira um índice de cellXfs,
- * que é o que o arquivo XML referencia em cada célula.
- */
 type Borda = 'CORPO' | 'TITULO' | 'TOT_ESQ' | 'TOT_MEIO' | 'TOT_DIR' | 'TOT_VALOR'
 
 const BORDAS: Record<Borda, [string, string, string, string]> = {
@@ -355,10 +358,10 @@ const BORDAS: Record<Borda, [string, string, string, string]> = {
   TOT_VALOR: ['medium', 'none', 'medium', 'none'],
 }
 
-const NUMFMT = { DATA: 164, DURACAO: 165, BRL: 166 }
+const NUMFMT = { DATA: 164, DURACAO: 165, BRL: 166, INTEIRO: 167, DUAS: 168 }
 
 class RegistroEstilos {
-  private fills: (string | null)[] = [null, null] // 0 = none, 1 = gray125
+  private fills: (string | null)[] = [null, null]
   private bordas: string[] = ['<border/>']
   private xfs: { fill: number; borda: number; numFmt: number; bold: boolean; red: boolean }[] = []
   private indice = new Map<string, number>()
@@ -384,9 +387,6 @@ class RegistroEstilos {
 
   /** Índice de estilo para uma célula. */
   obter(cor: string | null, borda: Borda, fmt: Fmt, bold: boolean, red = false): number {
-    const chave = `${cor || '-'}|${borda}|${fmt || '-'}|${bold}|${red}`
-    const achado = this.indice.get(chave)
-    if (achado !== undefined) return achado
     const numFmt =
       fmt === 'DATA'
         ? NUMFMT.DATA
@@ -394,7 +394,16 @@ class RegistroEstilos {
           ? NUMFMT.DURACAO
           : fmt === 'BRL'
             ? NUMFMT.BRL
-            : 0
+            : fmt === 'INTEIRO'
+              ? NUMFMT.INTEIRO
+              : fmt === 'DUAS'
+                ? NUMFMT.DUAS
+                : 0
+    // A chave usa o numFmt RESOLVIDO: sem isso 'INTEIRO'/'DUAS' reaproveitam o
+    // índice de outro formato e o Excel acaba mostrando General.
+    const chave = `${cor || '-'}|${borda}|${numFmt}|${bold}|${red}`
+    const achado = this.indice.get(chave)
+    if (achado !== undefined) return achado
     this.xfs.push({ fill: this.fill(cor), borda: this.borda(borda), numFmt, bold, red })
     const idx = this.xfs.length
     this.indice.set(chave, idx)
@@ -402,7 +411,7 @@ class RegistroEstilos {
   }
 
   xml(): string {
-    const numFmts = `<numFmt numFmtId="${NUMFMT.DATA}" formatCode="d-mmm"/><numFmt numFmtId="${NUMFMT.DURACAO}" formatCode="[h]:mm:ss"/><numFmt numFmtId="${NUMFMT.BRL}" formatCode="&quot;R$&quot;\\ #,##0.00;[Red]\\-&quot;R$&quot;\\ #,##0.00"/>`
+    const numFmts = `<numFmt numFmtId="${NUMFMT.DATA}" formatCode="d-mmm"/><numFmt numFmtId="${NUMFMT.DURACAO}" formatCode="[h]:mm:ss"/><numFmt numFmtId="${NUMFMT.BRL}" formatCode="&quot;R$&quot;\\ #,##0.00;[Red]\\-&quot;R$&quot;\\ #,##0.00"/><numFmt numFmtId="${NUMFMT.INTEIRO}" formatCode="#,##0"/><numFmt numFmtId="${NUMFMT.DUAS}" formatCode="#,##0.00"/>`
 
     // a original grava a cor preta explicita (rgb FF000000), nao herda do tema
     const fonte = (bold: boolean, red: boolean) =>
@@ -415,7 +424,6 @@ class RegistroEstilos {
           : `<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`,
       )
       .join('')
-      // o segundo fill é o gray125 que o Excel espera
       .replace(
         '<fill><patternFill patternType="none"/></fill><fill><patternFill patternType="none"/></fill>',
         '<fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>',
@@ -429,7 +437,7 @@ class RegistroEstilos {
       .join('')
 
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="3">${numFmts}</numFmts><fonts count="3">${fonte(false, false)}${fonte(true, false)}${fonte(true, true)}</fonts><fills count="${this.fills.length}">${fillsXml}</fills><borders count="${this.bordas.length}">${this.bordas.join('')}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${this.xfs.length + 1}"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>${xfsXml}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="5">${numFmts}</numFmts><fonts count="3">${fonte(false, false)}${fonte(true, false)}${fonte(true, true)}</fonts><fills count="${this.fills.length}">${fillsXml}</fills><borders count="${this.bordas.length}">${this.bordas.join('')}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${this.xfs.length + 1}"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>${xfsXml}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`
   }
 }
 
@@ -496,14 +504,365 @@ function xmlAba(spec: AbaSpec, linhas: LinhaAba[], merges: string[], ncol: numbe
   const ultima = linhas[linhas.length - 1]?.row ?? 4
 
   // Filtro e congelamento: quem recebe o arquivo precisa filtrar por equipamento,
-  // data, operador, turno, viagens — qualquer coluna. O cabeçalho (linhas 1 a 3)
-  // fica congelado para não sumir quando a lista tem centenas de linhas.
+  // data, operador, turno, viagens. O cabeçalho (linhas 1 a 3) fica congelado.
   const ultimaDados = ultima - 1
   const autoFiltro = ultimaDados >= 4 ? `<autoFilter ref="A3:${letra(ncol)}${ultimaDados}"/>` : ''
   const paneCongelado = `<sheetViews><sheetView workbookViewId="0"><pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A4" sqref="A4"/></sheetView></sheetViews>`
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${letra(ncol)}${ultima}"/>${paneCongelado}<sheetFormatPr defaultRowHeight="15" defaultColWidth="8.43"/><cols>${cols}</cols><sheetData>${rows}</sheetData>${autoFiltro}${mc}<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>`
+}
+
+/**
+ * Aba TABELA (BASE e PAINEL): grava o filtro no próprio arquivo via
+ * `_xlnm._FilterDatabase` (montado em workbook.xml), senão o Excel perde o
+ * filtro ao reabrir.
+ */
+function xmlAbaTabela(
+  linhas: LinhaAba[],
+  ncol: number,
+  merges: string[],
+  congelarLinha: number,
+  larguras: Record<number, number>,
+  filtroRef?: string,
+): string {
+  const cols = Object.entries(larguras)
+    .map(([k, w]) => `<col min="${k}" max="${k}" width="${w}" customWidth="1"/>`)
+    .join('')
+
+  const rows = linhas
+    .map((l) => {
+      const altura = l.altura ? ` ht="${l.altura}" customHeight="1"` : ''
+      const celulas = l.celulas
+        .slice()
+        .sort((a, b) => a.col - b.col)
+        .map((x) => xmlCelula(x.col, l.row, x.celula))
+        .join('')
+      return `<row r="${l.row}"${altura}>${celulas}</row>`
+    })
+    .join('')
+
+  const mc = merges.length
+    ? `<mergeCells count="${merges.length}">${merges.map((m) => `<mergeCell ref="${m}"/>`).join('')}</mergeCells>`
+    : ''
+  const ultima = linhas[linhas.length - 1]?.row ?? 1
+
+  const pane = congelarLinha
+    ? `<pane ySplit="${congelarLinha}" topLeftCell="A${congelarLinha + 1}" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A${congelarLinha + 1}" sqref="A${congelarLinha + 1}"/>`
+    : ''
+  const autoFiltro = filtroRef ? `<autoFilter ref="${filtroRef}"/>` : ''
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${letra(ncol)}${ultima}"/><sheetViews><sheetView workbookViewId="0">${pane}</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15" defaultColWidth="8.43"/><cols>${cols}</cols><sheetData>${rows}</sheetData>${autoFiltro}${mc}<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>`
+}
+
+interface LinhaBase {
+  data: string
+  frente: string
+  equipamento: string
+  categoria: string
+  pessoa: string
+  turno: string
+  horimetro_inicial: number
+  horimetro_final: number
+  horas: number
+  viagens: number
+  servico: string
+  observacao: string
+}
+
+/** Nome da aba base, usado nas fórmulas do painel. */
+const ABA_BASE = 'BASE'
+
+const DIAS_SEMANA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
+
+function paraDataSegura(iso: string): Date | null {
+  const [a, m, d] = (iso || '').slice(0, 10).split('-').map(Number)
+  if (!a || !m || !d) return null
+  return new Date(a, m - 1, d)
+}
+
+/**
+ * Monta as duas abas de apoio ao filtro:
+ *  - BASE: todos os lançamentos do período numa tabela única, plana, com filtro
+ *    em todas as colunas. É a aba onde a pessoa filtra.
+ *  - PAINEL: cartões do período, ranking por equipamento e a SOMA DO QUE ESTÁ
+ *    FILTRADO via SUBTOTAL — essa muda quando a BASE é filtrada.
+ */
+function montarAbasFiltro(
+  est: RegistroEstilos,
+  lancamentos: AmgLancamento[],
+  de: string,
+  ate: string,
+): { base: { nome: string; xml: string; filtro: string }; painel: { nome: string; xml: string } } {
+  const nomesEquip = (l: AmgLancamento) => l.expand?.equipamento?.identificacao || ''
+  // O lançamento não carrega a categoria; ela vem do cadastro do equipamento.
+  const categoriaPorEquip = new Map<string, string>()
+  for (const l of lancamentos) {
+    const nome = nomesEquip(l)
+    const cat = (l.expand?.equipamento as { categoria?: string })?.categoria
+    if (nome && cat) categoriaPorEquip.set(nome, cat)
+  }
+  const nomesCat = (l: AmgLancamento) => categoriaPorEquip.get(nomesEquip(l)) || ''
+
+  const linhas: LinhaBase[] = lancamentos
+    .filter((l) => l.data >= de && l.data <= ate)
+    .slice()
+    .sort((a, b) => {
+      if (a.data !== b.data) return a.data < b.data ? -1 : 1
+      const ea = nomesEquip(a)
+      const eb = nomesEquip(b)
+      return ea < eb ? -1 : ea > eb ? 1 : 0
+    })
+    .map((l) => ({
+      data: l.data,
+      frente: nomeFrente(l),
+      equipamento: nomesEquip(l),
+      categoria: nomesCat(l),
+      pessoa: l.expand?.operador?.nome || '',
+      turno: l.turno || '',
+      horimetro_inicial: Number(l.horimetro_inicial) || 0,
+      horimetro_final: Number(l.horimetro_final) || 0,
+      horas: Number(l.horas) || 0,
+      viagens: Number(l.viagens) || 0,
+      servico: l.servico || '',
+      observacao: observacaoAmg(l),
+    }))
+
+  const CAB_BASE = [
+    'DATA',
+    'MÊS',
+    'DIA DA SEMANA',
+    'FRENTE',
+    'EQUIPAMENTO',
+    'CATEGORIA',
+    'OPERADOR / MOTORISTA',
+    'TURNO',
+    'HORÍM INICIAL',
+    'HORÍM FINAL',
+    'TOTAL HORAS',
+    'TOTAL VIAGENS',
+    'DESCRIÇÃO DO SERVIÇO',
+    'OBSERVAÇÃO',
+  ]
+
+  const stCabBase = est.obter('1E3A8A', 'TITULO', null, true, false)
+  const stTexto = est.obter(null, 'CORPO', null, false, false)
+  const stData = est.obter(null, 'CORPO', 'DATA', false, false)
+
+  const linhasBase: LinhaAba[] = [
+    {
+      row: 1,
+      altura: 26,
+      celulas: CAB_BASE.map((h, i) => ({ col: i + 1, celula: T(h, stCabBase) })),
+    },
+  ]
+
+  let r = 2
+  for (const l of linhas) {
+    const dt = paraDataSegura(l.data)
+    const mes = dt ? `${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}` : ''
+    const semana = dt ? DIAS_SEMANA[dt.getDay()] : ''
+
+    linhasBase.push({
+      row: r,
+      altura: 15,
+      celulas: [
+        { col: 1, celula: Nc(serialExcel(l.data), stData) },
+        { col: 2, celula: T(mes, stTexto) },
+        { col: 3, celula: T(semana, stTexto) },
+        { col: 4, celula: T(l.frente, stTexto) },
+        { col: 5, celula: T(l.equipamento, est.obter(null, 'CORPO', null, true, false)) },
+        { col: 6, celula: T(l.categoria, stTexto) },
+        { col: 7, celula: T(l.pessoa, stTexto) },
+        { col: 8, celula: T(l.turno, stTexto) },
+        { col: 9, celula: Nc(l.horimetro_inicial, stTexto) },
+        { col: 10, celula: Nc(l.horimetro_final, stTexto) },
+        { col: 11, celula: Nc(l.horas, stTexto) },
+        { col: 12, celula: Nc(l.viagens, stTexto) },
+        { col: 13, celula: T(l.servico, stTexto) },
+        { col: 14, celula: T(l.observacao, stTexto) },
+      ],
+    })
+    r++
+  }
+
+  const ultimaBase = Math.max(r - 1, 2)
+  const filtroBase = `A1:N${ultimaBase}`
+  const baseXml = xmlAbaTabela(
+    linhasBase,
+    14,
+    [],
+    1,
+    {
+      1: 11,
+      2: 9,
+      3: 13,
+      4: 28,
+      5: 12,
+      6: 18,
+      7: 22,
+      8: 12,
+      9: 14,
+      10: 14,
+      11: 12,
+      12: 13,
+      13: 55,
+      14: 45,
+    },
+    filtroBase,
+  )
+
+  // ---------------------------------------------------------------- PAINEL
+  const porEquip = new Map<
+    string,
+    { equip: string; categoria: string; horas: number; viagens: number; dias: Set<string> }
+  >()
+  for (const l of linhas) {
+    const chave = l.equipamento
+    const item = porEquip.get(chave) || {
+      equip: chave,
+      categoria: l.categoria,
+      horas: 0,
+      viagens: 0,
+      dias: new Set<string>(),
+    }
+    item.horas += l.horas
+    item.viagens += l.viagens
+    item.dias.add(l.data)
+    porEquip.set(chave, item)
+  }
+  const ranking = [...porEquip.values()].sort((a, b) => b.horas - a.horas)
+  const totalHoras = ranking.reduce((a, x) => a + x.horas, 0)
+  const totalViagens = ranking.reduce((a, x) => a + x.viagens, 0)
+  const dias = new Set(linhas.map((l) => l.data)).size
+
+  const stTitulo = est.obter('1E3A8A', 'TITULO', null, true, false)
+  const stRotulo = est.obter('EEEEEE', 'TITULO', null, true, false)
+  const stValor = est.obter('DBEAFE', 'TITULO', null, true, false)
+  const stNota = est.obter(null, 'CORPO', null, false, false)
+  const stLinha = est.obter(null, 'CORPO', null, false, false)
+
+  const linhaPainel: LinhaAba[] = []
+  const mergesPainel: string[] = []
+
+  const poe = (row: number, col: number, celula: Celula) => {
+    const existente = linhaPainel.find((l) => l.row === row)
+    if (existente) existente.celulas.push({ col, celula })
+    else linhaPainel.push({ row, celulas: [{ col, celula }] })
+  }
+
+  poe(1, 1, T('PAINEL DE FILTROS — PRODUÇÃO BARRAGEM 03', stTitulo))
+  poe(1, 4, T(`${ddmm(de)} á ${ddmmaaaa(ate)}`, stTitulo))
+  mergesPainel.push('A1:C1', 'D1:F1')
+
+  poe(2, 1, T('Use a aba BASE para filtrar; os números abaixo são o total do período.', stNota))
+  mergesPainel.push('A2:F2')
+
+  // Cartões: horas e média com 2 casas, contagens inteiras. Número de verdade
+  // (não texto) para o Excel poder reaproveitar.
+  const cartoes: [string, number][] = [
+    ['TOTAL DE HORAS', totalHoras],
+    ['TOTAL DE VIAGENS', totalViagens],
+    ['DIAS COM PRODUÇÃO', dias],
+    ['APONTAMENTOS', linhas.length],
+    ['EQUIPAMENTOS', ranking.length],
+    ['MÉDIA POR DIA', dias > 0 ? totalHoras / dias : 0],
+  ]
+  let col = 1
+  for (const [rot, val] of cartoes) {
+    poe(4, col, T(rot, stRotulo))
+    // contagem inteira usa #,##0; horas e média usam #,##0.00
+    const formatoCartao: Fmt = Number.isInteger(val) ? 'INTEIRO' : 'DUAS'
+    poe(5, col, Nc(val, est.obter('DBEAFE', 'TITULO', formatoCartao, true, false)))
+    col++
+  }
+
+  poe(7, 1, T('HORAS E VIAGENS POR EQUIPAMENTO (período inteiro)', stCabBase))
+  mergesPainel.push('A7:G7')
+
+  const cabRank = ['#', 'EQUIPAMENTO', 'CATEGORIA', 'HORAS', 'VIAGENS', 'H/DIA', '% DO TOTAL']
+  cabRank.forEach((h, i) => poe(8, i + 1, T(h, stRotulo)))
+
+  let rr = 9
+  ranking.forEach((x, i) => {
+    poe(rr, 1, Nc(i + 1, stLinha))
+    poe(rr, 2, T(x.equip, stLinha))
+    poe(rr, 3, T(x.categoria, stLinha))
+    poe(rr, 4, Nc(x.horas, est.obter(null, 'CORPO', 'DUAS', false, false)))
+    poe(rr, 5, Nc(x.viagens, est.obter(null, 'CORPO', 'INTEIRO', false, false)))
+    poe(
+      rr,
+      6,
+      Nc(
+        x.dias.size > 0 ? x.horas / x.dias.size : 0,
+        est.obter(null, 'CORPO', 'DUAS', false, false),
+      ),
+    )
+    poe(
+      rr,
+      7,
+      Nc(
+        totalHoras > 0 ? (100 * x.horas) / totalHoras : 0,
+        est.obter(null, 'CORPO', 'DUAS', false, false),
+      ),
+    )
+    rr++
+  })
+
+  const instrucoes = [
+    'COMO FILTRAR',
+    '1. Vá para a aba BASE.',
+    '2. Clique na setinha do cabeçalho da coluna que quer filtrar (EQUIPAMENTO, DATA, OPERADOR, TURNO, FRENTE…).',
+    '3. Marque só o que quer ver e confirme. A tabela esconde o resto.',
+    '4. A soma do que sobrou aparece no rodapé desta aba, em "SOMA DO QUE ESTÁ FILTRADO".',
+    '5. Para tirar o filtro: setinha do cabeçalho → "Limpar filtro de …".',
+    '',
+    'Os cartões e o ranking acima NÃO mudam quando você filtra a BASE: eles são o total do período.',
+  ]
+  let linhaInstr = rr + 1
+  instrucoes.forEach((txt, i) => {
+    poe(linhaInstr + i, 1, T(txt, i === 0 ? stCabBase : stNota))
+    if (i === 0) mergesPainel.push(`A${linhaInstr}:G${linhaInstr}`)
+  })
+  linhaInstr += instrucoes.length
+
+  const linhasSub = linhaInstr + 1
+  poe(linhasSub, 1, T('SOMA DO QUE ESTÁ FILTRADO (muda com o filtro):', stRotulo))
+  mergesPainel.push(`A${linhasSub}:C${linhasSub}`)
+  poe(linhasSub, 4, T('Horas', stRotulo))
+  poe(linhasSub, 5, T('Viagens', stRotulo))
+  poe(linhasSub, 6, T('Apontamentos', stRotulo))
+
+  const r2 = linhasSub + 1
+  poe(r2, 4, F(`SUBTOTAL(9,BASE!K2:K${ultimaBase})`, totalHoras, stValor))
+  poe(r2, 5, F(`SUBTOTAL(9,BASE!L2:L${ultimaBase})`, totalViagens, stValor))
+  poe(r2, 6, F(`SUBTOTAL(3,BASE!A2:A${ultimaBase})`, linhas.length, stValor))
+
+  poe(
+    r2 + 2,
+    1,
+    T(
+      'SUBTOTAL(9,…) soma só as linhas visíveis — é o que faz o número acompanhar o filtro.',
+      stNota,
+    ),
+  )
+  mergesPainel.push(`A${r2 + 2}:G${r2 + 2}`)
+
+  const painelXml = xmlAbaTabela(linhaPainel, 7, mergesPainel, 0, {
+    1: 14,
+    2: 26,
+    3: 18,
+    4: 16,
+    5: 16,
+    6: 22,
+    7: 14,
+  })
+
+  return {
+    base: { nome: ABA_BASE, xml: baseXml, filtro: filtroBase },
+    painel: { nome: 'PAINEL', xml: painelXml },
+  }
 }
 
 // ---------------------------------------------------------------- montagem
@@ -528,7 +887,7 @@ export interface AmgLancamento {
   disposicao?: boolean
   observacao?: string
   expand?: {
-    equipamento?: { identificacao?: string }
+    equipamento?: { identificacao?: string; categoria?: string }
     operador?: { nome?: string }
     frente?: { nome?: string }
     substituindo?: { identificacao?: string }
@@ -564,8 +923,8 @@ export interface ResultadoAmg {
 }
 
 /**
- * Gera o arquivo no padrão AMG: sempre as 9 abas, na ordem da original, inclusive as
- * que não têm lançamento no período (vazias, com cabeçalho e total zero).
+ * Gera o arquivo no padrão AMG: as 9 abas originais (inclusive as vazias, com
+ * cabeçalho e total zero) mais BASE e PAINEL para filtro dentro do Excel.
  */
 export function gerarAmg(
   lancamentos: AmgLancamento[],
@@ -668,14 +1027,8 @@ export function gerarAmg(
         : Number(l.horimetro_final) || 0
       const hTot = spec.duracao ? horas / 24 : horas
 
-      const st = (col: number) =>
-        est.obter(
-          spec.fillDado[col - 1] ?? null,
-          'CORPO',
-          spec.fmtDado[col - 1] ?? null,
-          false,
-          false,
-        )
+      const st = (c: number) =>
+        est.obter(spec.fillDado[c - 1] ?? null, 'CORPO', spec.fmtDado[c - 1] ?? null, false, false)
 
       const cel: { col: number; celula: Celula }[] = [
         { col: 1, celula: Nc(serialExcel(l.data), st(1)) },
@@ -701,22 +1054,10 @@ export function gerarAmg(
     }
 
     const ultima = r
-    const stTotal = (col: number) => {
+    const stTotal = (c: number) => {
       const borda: Borda =
-        col === 1
-          ? 'TOT_ESQ'
-          : col === 6
-            ? 'TOT_DIR'
-            : col === 7 || col >= 8
-              ? 'TOT_VALOR'
-              : 'TOT_MEIO'
-      return est.obter(
-        spec.fillTot[col - 1] ?? null,
-        borda,
-        spec.fmtTot[col - 1] ?? null,
-        true,
-        false,
-      )
+        c === 1 ? 'TOT_ESQ' : c === 6 ? 'TOT_DIR' : c === 7 || c >= 8 ? 'TOT_VALOR' : 'TOT_MEIO'
+      return est.obter(spec.fillTot[c - 1] ?? null, borda, spec.fmtTot[c - 1] ?? null, true, false)
     }
 
     const linhaTotal: { col: number; celula: Celula }[] = [
@@ -747,6 +1088,12 @@ export function gerarAmg(
     })
   }
 
+  // ---- abas de apoio ao filtro: BASE (plana, filtrável) e PAINEL (cartões)
+  const apoio = montarAbasFiltro(est, lancamentos, de, ate)
+  const baseIdx = sheets.length + 1
+  sheets.push({ nome: apoio.base.nome, xml: apoio.base.xml })
+  sheets.push({ nome: apoio.painel.nome, xml: apoio.painel.xml })
+
   // ---- pacote
   const arquivos: { nome: string; dados: Uint8Array }[] = []
   const overrides = sheets
@@ -762,10 +1109,15 @@ export function gerarAmg(
   const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`
 
+  // O nome da aba BASE é reservado com _xlnm._FilterDatabase: é isso que faz o
+  // Excel guardar o filtro do arquivo (sem isso as setinhas somem ao reabrir).
+  const ultimaBaseNum = apoio.base.filtro.split(':')[1].replace(/[A-Z]+/, '')
+  const nomeReservado = `<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="${baseIdx - 1}" hidden="1">'${esc(apoio.base.nome)}'!$A$1:$N$${ultimaBaseNum}</definedName></definedNames>`
+
   const workbook = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets
     .map((s, i) => `<sheet name="${esc(s.nome)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`)
-    .join('')}</sheets><calcPr calcId="0" fullCalcOnLoad="1"/></workbook>`
+    .join('')}</sheets>${nomeReservado}<calcPr calcId="0" fullCalcOnLoad="1"/></workbook>`
 
   const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets
