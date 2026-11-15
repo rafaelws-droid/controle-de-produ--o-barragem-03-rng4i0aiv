@@ -10,6 +10,7 @@ import {
   LogOut,
   HardHat,
   ShieldCheck,
+  Gauge,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -29,6 +30,7 @@ const NAV = [
   { label: 'Novo Lançamento', path: '/novo', icon: PlusCircle },
   { label: 'Lançamentos', path: '/lancamentos', icon: History },
   { label: 'Relatório', path: '/relatorio', icon: FileBarChart },
+  { label: 'Horímetros', path: '/horimetros', icon: Gauge },
   { label: 'Equipamentos', path: '/equipamentos', icon: Truck },
   { label: 'Operadores', path: '/operadores', icon: Users },
   { label: 'Acessos', path: '/usuarios', icon: ShieldCheck, soGestor: true },
