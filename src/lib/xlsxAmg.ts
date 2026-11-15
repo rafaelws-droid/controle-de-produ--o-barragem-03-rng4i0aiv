@@ -553,7 +553,7 @@ function xmlAbaTabela(
   const autoFiltro = filtroRef ? `<autoFilter ref="${filtroRef}"/>` : ''
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${letra(ncol)}${ultima}"/><sheetViews><sheetView workbookViewId="0">${pane}</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15" defaultColWidth="8.43"/><cols>${cols}</cols><sheetData>${rows}</sheetData>${autoFiltro}${mc}<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>`
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><dimension ref="A1:${letra(ncol)}${ultima}"/><sheetViews><sheetView workbookViewId="0">${pane}</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15" defaultColWidth="8.43"/><cols>${cols}</cols><sheetData>${rows}</sheetData>${autoFiltro}${mc}<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>`
 }
 
 interface LinhaBase {
@@ -868,6 +868,392 @@ function montarAbasFiltro(
   }
 }
 
+const AZUL_D = '1E3A8A'
+const AZUL_M = '2563EB'
+const CINZA_D = 'F1F5F9'
+const AMARELO_D = 'FEF3C7'
+
+interface ChartDef {
+  tipo: 'line' | 'barH' | 'barV' | 'pie'
+  titulo: string
+  catsRef: string
+  series: { titulo: string; nomeRef: string; dadosRef: string; cor: string }[]
+  /** célula onde o gráfico é ancorado (canto superior esquerdo) */
+  ancora: string
+}
+
+/** chartN.xml — gráfico nativo do Excel (sem imagem, redesenha ao mudar o dado). */
+function xmlChart(c: ChartDef): string {
+  const seriesXml = c.series
+    .map(
+      (s, i) => `
+    <c:ser><c:idx val="${i}"/><c:order val="${i}"/>
+      <c:tx><c:strRef><c:f>${esc(s.nomeRef)}</c:f><c:strCache><c:ptCount val="1"/><c:pt idx="0"><c:v>${esc(s.titulo)}</c:v></c:pt></c:strCache></c:strRef></c:tx>
+      <c:spPr><a:solidFill><a:srgbClr val="${s.cor.toUpperCase()}"/></a:solidFill></c:spPr>
+      <c:cat><c:strRef><c:f>${esc(c.catsRef)}</c:f></c:strRef></c:cat>
+      <c:val><c:numRef><c:f>${esc(s.dadosRef)}</c:f></c:numRef></c:val>
+      ${c.tipo === 'line' ? '<c:smooth val="0"/>' : ''}
+    </c:ser>`,
+    )
+    .join('')
+
+  let plot = ''
+  if (c.tipo === 'line') {
+    plot = `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${seriesXml}<c:axId val="111111111"/><c:axId val="222222222"/></c:lineChart><c:catAx><c:axId val="111111111"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:crossAx val="222222222"/></c:catAx><c:valAx><c:axId val="222222222"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:majorGridlines/><c:crossAx val="111111111"/></c:valAx>`
+  } else if (c.tipo === 'pie') {
+    plot = `<c:pieChart><c:varyColors val="1"/>${seriesXml}<c:firstSliceAng val="0"/></c:pieChart>`
+  } else {
+    const barDir = c.tipo === 'barH' ? 'bar' : 'col'
+    const posCat = c.tipo === 'barH' ? 'l' : 'b'
+    const posVal = c.tipo === 'barH' ? 'b' : 'l'
+    plot = `<c:barChart><c:barDir val="${barDir}"/><c:grouping val="clustered"/><c:varyColors val="0"/>${seriesXml}<c:gapWidth val="60"/><c:axId val="111111111"/><c:axId val="222222222"/></c:barChart><c:catAx><c:axId val="111111111"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${posCat}"/><c:crossAx val="222222222"/></c:catAx><c:valAx><c:axId val="222222222"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${posVal}"/><c:majorGridlines/><c:crossAx val="111111111"/></c:valAx>`
+  }
+
+  const legenda =
+    c.tipo === 'pie' ? '<c:legend><c:legendPos val="r"/><c:overlay val="0"/></c:legend>' : ''
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><c:chart><c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr sz="1100" b="1"/><a:t>${esc(c.titulo)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/><c:plotArea><c:layout/>${plot}</c:plotArea>${legenda}<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart></c:chartSpace>`
+}
+
+/** drawingN.xml — posiciona os gráficos na aba. */
+function xmlDrawing(charts: ChartDef[]): string {
+  const ancoras = charts
+    .map((c, i) => {
+      const m = /^([A-Z]+)(\d+)$/.exec(c.ancora)
+      let col = 0
+      if (m) for (const ch of m[1]) col = col * 26 + (ch.charCodeAt(0) - 64)
+      const c0 = Math.max(col - 1, 0)
+      const r0 = m ? Number(m[2]) - 1 : 0
+      return `<xdr:twoCellAnchor><xdr:from><xdr:col>${c0}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${r0}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>${c0 + 8}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${r0 + 20}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to><xdr:graphicFrame macro=""><xdr:nvGraphicFramePr><xdr:cNvPr id="${i + 2}" name="Gráfico ${i + 1}"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" r:id="rId${i + 1}"/></a:graphicData></a:graphic></xdr:graphicFrame><xdr:clientData/></xdr:twoCellAnchor>`
+    })
+    .join('')
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${ancoras}</xdr:wsDr>`
+}
+
+interface CtxDash {
+  est: RegistroEstilos
+  equipamentos: string[]
+  frentes: string[]
+  turnos: string[]
+  dias: string[]
+  de: string
+  ate: string
+  /** lançamentos do período, para calcular o VALOR em cache das fórmulas */
+  linhas: AmgLancamento[]
+}
+
+/** Arredonda para 4 casas — usado no cache das fórmulas. */
+const duas = (v: number) => Math.round(v * 10000) / 10000
+
+/**
+ * Monta a aba DASHBOARD: 2 seletores (equipamento e frente), período, 6 cartões,
+ * 4 tabelas calculadas e 4 gráficos nativos.
+ *
+ * Todos os números são SUMPRODUCT com a MESMA condição de filtro:
+ *   ((BASE!E=B6)+(B6="TODOS"))*((BASE!D=D6)+(D6="TODOS"))*(data>=F6)*(data<=H6)
+ * O `+(B6="TODOS")` é o que faz "TODOS" não filtrar nada.
+ *
+ * O cache de cada célula é calculado aqui em TypeScript (função cacheDe): sem
+ * isso quem abre o arquivo num programa que não recalcula vê zero em tudo.
+ */
+function montarAbaDashboard(ctx: CtxDash, ULT: number): { xml: string; charts: ChartDef[] } {
+  const { est, equipamentos, frentes, turnos, dias, de, ate } = ctx
+  const L: LinhaAba[] = []
+  const merges: string[] = []
+
+  const poe = (row: number, col: number, celula: Celula) => {
+    const e = L.find((x) => x.row === row)
+    if (e) e.celulas.push({ col, celula })
+    else L.push({ row, celulas: [{ col, celula }] })
+  }
+
+  const stTit = est.obter(AZUL_D, 'TITULO', null, true, false)
+  const stSub = est.obter(null, 'CORPO', null, false, false)
+  const stRot = est.obter(CINZA_D, 'CORPO', null, true, false)
+  const stCardAzul = est.obter('EFF6FF', 'CORPO', null, true, false)
+  const stCardVerde = est.obter('ECFDF5', 'CORPO', null, true, false)
+  const stSel = est.obter(AMARELO_D, 'CORPO', null, true, false)
+  const stTexto = est.obter(null, 'CORPO', null, false, false)
+  const stData = est.obter(null, 'CORPO', 'DATA', false, false)
+  const stDuas = est.obter(null, 'CORPO', 'DUAS', false, false)
+  const stInt = est.obter(null, 'CORPO', 'INTEIRO', false, false)
+  const stSecao = est.obter(AZUL_D, 'CORPO', null, true, false)
+
+  // título
+  poe(1, 1, T('DASHBOARD DE PRODUÇÃO — BARRAGEM 03', stTit))
+  merges.push('A1:H1')
+  poe(2, 1, T('Escolha nos campos amarelos. Os números e os gráficos mudam na hora.', stSub))
+  merges.push('A2:H2')
+
+  // seletores: rótulo na linha 5, valor na 6 (B6 e D6 são os seletores)
+  poe(5, 1, T('EQUIPAMENTO', stRot))
+  poe(6, 2, T('TODOS', stSel))
+  poe(5, 3, T('FRENTE', stRot))
+  poe(6, 4, T('TODOS', stSel))
+  poe(5, 5, T('DE', stRot))
+  poe(6, 6, Nc(serialExcel(de), stData))
+  poe(5, 7, T('ATÉ', stRot))
+  poe(6, 8, Nc(serialExcel(ate), stData))
+
+  // listas dos dropdowns em AA (27) e AB (28)
+  poe(3, 27, T('TODOS', stTexto))
+  equipamentos.forEach((e, i) => poe(4 + i, 27, T(e, stTexto)))
+  poe(3, 28, T('TODOS', stTexto))
+  frentes.forEach((f, i) => poe(4 + i, 28, T(f, stTexto)))
+
+  // cartões
+  const CART: [string, number][] = [
+    ['HORAS', stCardAzul],
+    ['VIAGENS', stCardAzul],
+    ['DIAS', stCardVerde],
+    ['APONTAMENTOS', stCardVerde],
+    ['EQUIPAMENTOS', stCardVerde],
+    ['MÉDIA H/DIA', stCardAzul],
+  ]
+  CART.forEach(([rot, st], i) => {
+    poe(8, 11 + i, T(rot, stRot))
+    poe(9, 11 + i, T('', st))
+  })
+
+  // tabela por dia
+  const R_DIA = 12
+  poe(R_DIA - 1, 2, T('PRODUÇÃO POR DIA', stSecao))
+  ;['DIA', 'HORAS', 'VIAGENS'].forEach((h, j) => poe(R_DIA, 2 + j, T(h, stRot)))
+  dias.forEach((d, i) => {
+    const r = R_DIA + 1 + i
+    poe(r, 2, Nc(serialExcel(d), stData))
+    poe(r, 3, T('', stDuas))
+    poe(r, 4, T('', stInt))
+  })
+  const FIM_DIA = R_DIA + dias.length
+
+  // tabela por equipamento
+  const R_EQ = FIM_DIA + 3
+  poe(R_EQ - 1, 2, T('HORAS POR EQUIPAMENTO', stSecao))
+  ;['EQUIPAMENTO', 'HORAS', 'VIAGENS'].forEach((h, j) => poe(R_EQ, 2 + j, T(h, stRot)))
+  equipamentos.forEach((e, i) => {
+    const r = R_EQ + 1 + i
+    poe(r, 2, T(e, stTexto))
+    poe(r, 3, T('', stDuas))
+    poe(r, 4, T('', stInt))
+  })
+  const FIM_EQ = R_EQ + equipamentos.length
+
+  // tabela por frente
+  const R_FR = FIM_EQ + 3
+  poe(R_FR - 1, 9, T('HORAS POR FRENTE', stSecao))
+  ;['FRENTE', 'HORAS', 'VIAGENS'].forEach((h, j) => poe(R_FR, 9 + j, T(h, stRot)))
+  frentes.forEach((f, i) => {
+    const r = R_FR + 1 + i
+    poe(r, 9, T(f, stTexto))
+    poe(r, 10, T('', stDuas))
+    poe(r, 11, T('', stInt))
+  })
+  const FIM_FR = R_FR + frentes.length
+
+  // tabela por turno
+  const R_TU = FIM_FR + 3
+  poe(R_TU - 1, 9, T('HORAS POR TURNO', stSecao))
+  ;['TURNO', 'HORAS'].forEach((h, j) => poe(R_TU, 9 + j, T(h, stRot)))
+  turnos.forEach((t, i) => {
+    const r = R_TU + 1 + i
+    poe(r, 9, T(t, stTexto))
+    poe(r, 10, T('', stDuas))
+  })
+
+  // ---- fórmulas
+  const FLT =
+    `((BASE!$E$2:$E$${ULT}=$B$6)+($B$6="TODOS"))` +
+    `*((BASE!$D$2:$D$${ULT}=$D$6)+($D$6="TODOS"))` +
+    `*(BASE!$A$2:$A$${ULT}>=$F$6)*(BASE!$A$2:$A$${ULT}<=$H$6)`
+
+  const formulas: Record<string, string> = {
+    K9: `SUMPRODUCT(${FLT}*BASE!$K$2:$K$${ULT})`,
+    L9: `SUMPRODUCT(${FLT}*BASE!$L$2:$L$${ULT})`,
+    M9: `COUNTIF(C${R_DIA + 1}:C${FIM_DIA},">0")`,
+    N9: `SUMPRODUCT(${FLT})`,
+    O9: `IF($B$6<>"TODOS",1,COUNTIF(C${R_EQ + 1}:C${FIM_EQ},">0"))`,
+    P9: 'IF($M$9=0,0,$K$9/$M$9)',
+  }
+  dias.forEach((_d, i) => {
+    const r = R_DIA + 1 + i
+    formulas[`C${r}`] = `SUMPRODUCT(${FLT}*(BASE!$A$2:$A$${ULT}=$B${r})*BASE!$K$2:$K$${ULT})`
+    formulas[`D${r}`] = `SUMPRODUCT(${FLT}*(BASE!$A$2:$A$${ULT}=$B${r})*BASE!$L$2:$L$${ULT})`
+  })
+  equipamentos.forEach((_e, i) => {
+    const r = R_EQ + 1 + i
+    formulas[`C${r}`] = `SUMPRODUCT(${FLT}*(BASE!$E$2:$E$${ULT}=$B${r})*BASE!$K$2:$K$${ULT})`
+    formulas[`D${r}`] = `SUMPRODUCT(${FLT}*(BASE!$E$2:$E$${ULT}=$B${r})*BASE!$L$2:$L$${ULT})`
+  })
+  frentes.forEach((_f, i) => {
+    const r = R_FR + 1 + i
+    formulas[`J${r}`] = `SUMPRODUCT(${FLT}*(BASE!$D$2:$D$${ULT}=$I${r})*BASE!$K$2:$K$${ULT})`
+    formulas[`K${r}`] = `SUMPRODUCT(${FLT}*(BASE!$D$2:$D$${ULT}=$I${r})*BASE!$L$2:$L$${ULT})`
+  })
+  turnos.forEach((_t, i) => {
+    const r = R_TU + 1 + i
+    formulas[`J${r}`] = `SUMPRODUCT(${FLT}*(BASE!$H$2:$H$${ULT}=$I${r})*BASE!$K$2:$K$${ULT})`
+  })
+
+  /** Valor inicial de cada célula (espelha a fórmula em TypeScript). */
+  function cacheDe(ref: string): number {
+    const noPeriodo = (l: AmgLancamento) => (l.data || '') >= de && (l.data || '') <= ate
+    const dentro = ctx.linhas.filter(noPeriodo)
+    const horasTot = dentro.reduce((a, l) => a + (Number(l.horas) || 0), 0)
+    const viagTot = dentro.reduce((a, l) => a + (Number(l.viagens) || 0), 0)
+    const diasTot = new Set(dentro.map((l) => l.data)).size
+
+    if (ref === 'K9') return duas(horasTot)
+    if (ref === 'L9') return viagTot
+    if (ref === 'M9') return diasTot
+    if (ref === 'N9') return dentro.length
+    if (ref === 'O9')
+      return new Set(dentro.map((l) => l.expand?.equipamento?.identificacao || '')).size
+    if (ref === 'P9') return diasTot > 0 ? duas(horasTot / diasTot) : 0
+
+    const m = /^([CDJK])(\d+)$/.exec(ref)
+    if (!m) return 0
+    const col = m[1]
+    const row = Number(m[2])
+
+    if (row > R_DIA && row <= FIM_DIA) {
+      const dia = dias[row - R_DIA - 1]
+      const doDia = dentro.filter((l) => l.data === dia)
+      if (col === 'C') return duas(doDia.reduce((a, l) => a + (Number(l.horas) || 0), 0))
+      if (col === 'D') return doDia.reduce((a, l) => a + (Number(l.viagens) || 0), 0)
+    }
+    if (row > R_EQ && row <= FIM_EQ) {
+      const eq = equipamentos[row - R_EQ - 1]
+      const doEq = dentro.filter((l) => (l.expand?.equipamento?.identificacao || '') === eq)
+      if (col === 'C') return duas(doEq.reduce((a, l) => a + (Number(l.horas) || 0), 0))
+      if (col === 'D') return doEq.reduce((a, l) => a + (Number(l.viagens) || 0), 0)
+    }
+    if (row > R_FR && row <= FIM_FR) {
+      const fr = frentes[row - R_FR - 1]
+      const daFr = dentro.filter((l) => nomeFrente(l) === fr)
+      if (col === 'J') return duas(daFr.reduce((a, l) => a + (Number(l.horas) || 0), 0))
+      if (col === 'K') return daFr.reduce((a, l) => a + (Number(l.viagens) || 0), 0)
+    }
+    if (row > R_TU && row <= R_TU + turnos.length) {
+      const tu = turnos[row - R_TU - 1]
+      const doTu = dentro.filter((l) => (l.turno || '') === tu)
+      if (col === 'J') return duas(doTu.reduce((a, l) => a + (Number(l.horas) || 0), 0))
+    }
+    return 0
+  }
+
+  // injeta as fórmulas (mantendo o estilo que já estava na célula)
+  for (const [ref, fx] of Object.entries(formulas)) {
+    const m = /^([A-Z]+)(\d+)$/.exec(ref)
+    if (!m) continue
+    let col = 0
+    for (const ch of m[1]) col = col * 26 + (ch.charCodeAt(0) - 64)
+    const linha = L.find((l) => l.row === Number(m[2]))
+    if (!linha) continue
+    const cel = linha.celulas.find((c) => c.col === col)
+    if (!cel) continue
+    const estilo = (cel.celula as { estilo: number }).estilo
+    cel.celula = { tipo: 'formula', formula: fx, cache: cacheDe(ref), estilo }
+  }
+
+  const larguras = {
+    1: 2,
+    2: 12,
+    3: 11,
+    4: 26,
+    5: 9,
+    6: 12,
+    7: 8,
+    8: 12,
+    9: 24,
+    10: 12,
+    11: 15,
+    12: 13,
+    13: 11,
+    14: 15,
+    15: 15,
+    16: 14,
+    17: 3,
+    18: 3,
+    27: 14,
+    28: 26,
+  }
+  let xml = xmlAbaTabela(L, 28, merges, 3, larguras)
+
+  const charts: ChartDef[] = [
+    {
+      tipo: 'line',
+      titulo: 'Horas por dia',
+      catsRef: `'DASHBOARD'!$B$${R_DIA + 1}:$B$${FIM_DIA}`,
+      series: [
+        {
+          titulo: 'Horas',
+          nomeRef: `'DASHBOARD'!$C$${R_DIA}`,
+          dadosRef: `'DASHBOARD'!$C$${R_DIA + 1}:$C$${FIM_DIA}`,
+          cor: AZUL_M,
+        },
+      ],
+      ancora: 'R4',
+    },
+    {
+      tipo: 'barH',
+      titulo: 'Horas por equipamento',
+      catsRef: `'DASHBOARD'!$B$${R_EQ + 1}:$B$${FIM_EQ}`,
+      series: [
+        {
+          titulo: 'Horas',
+          nomeRef: `'DASHBOARD'!$C$${R_EQ}`,
+          dadosRef: `'DASHBOARD'!$C$${R_EQ + 1}:$C$${FIM_EQ}`,
+          cor: AZUL_M,
+        },
+      ],
+      ancora: 'R24',
+    },
+    {
+      tipo: 'pie',
+      titulo: 'Horas por frente',
+      catsRef: `'DASHBOARD'!$I$${R_FR + 1}:$I$${FIM_FR}`,
+      series: [
+        {
+          titulo: 'Horas',
+          nomeRef: `'DASHBOARD'!$J$${R_FR}`,
+          dadosRef: `'DASHBOARD'!$J$${R_FR + 1}:$J$${FIM_FR}`,
+          cor: '70AD47',
+        },
+      ],
+      ancora: 'R48',
+    },
+    {
+      tipo: 'barV',
+      titulo: 'Horas por turno',
+      catsRef: `'DASHBOARD'!$I$${R_TU + 1}:$I$${R_TU + turnos.length}`,
+      series: [
+        {
+          titulo: 'Horas',
+          nomeRef: `'DASHBOARD'!$J$${R_TU}`,
+          dadosRef: `'DASHBOARD'!$J$${R_TU + 1}:$J$${R_TU + turnos.length}`,
+          cor: 'ED7D31',
+        },
+      ],
+      ancora: 'R72',
+    },
+  ]
+
+  // validação de dados (dropdowns) + referência ao desenho
+  const dv =
+    `<dataValidations count="2">` +
+    `<dataValidation type="list" allowBlank="0" showInputMessage="1" showErrorMessage="1" sqref="B6"><formula1>'DASHBOARD'!$AA$3:$AA$${3 + equipamentos.length}</formula1></dataValidation>` +
+    `<dataValidation type="list" allowBlank="0" showInputMessage="1" showErrorMessage="1" sqref="D6"><formula1>'DASHBOARD'!$AB$3:$AB$${3 + frentes.length}</formula1></dataValidation>` +
+    `</dataValidations>`
+
+  xml = xml.replace('<pageMargins', dv + '<drawing r:id="rId1"/><pageMargins')
+
+  return { xml, charts }
+}
+
 // ---------------------------------------------------------------- montagem
 
 export interface AmgLancamento {
@@ -1097,6 +1483,32 @@ export function gerarAmg(
   sheets.push({ nome: apoio.base.nome, xml: apoio.base.xml })
   sheets.push({ nome: apoio.painel.nome, xml: apoio.painel.xml })
 
+  // ---- aba DASHBOARD (seletores + cartões + 4 gráficos nativos)
+  const noPeriodo = lancamentos.filter((l) => l.data >= de && l.data <= ate)
+  const dashEquips = [...new Set(noPeriodo.map((l) => l.expand?.equipamento?.identificacao || ''))]
+    .filter(Boolean)
+    .sort()
+  const dashFrentes = [...new Set(noPeriodo.map((l) => nomeFrente(l)))].filter(Boolean).sort()
+  const dashTurnos = [...new Set(noPeriodo.map((l) => l.turno || ''))].filter(Boolean).sort()
+  const dashDias = [...new Set(noPeriodo.map((l) => l.data))].sort()
+  const ULT_BASE = parseInt(apoio.base.filtro.split(':')[1].replace(/[A-Z]+/, ''), 10)
+
+  const dash = montarAbaDashboard(
+    {
+      est,
+      equipamentos: dashEquips,
+      frentes: dashFrentes,
+      turnos: dashTurnos,
+      dias: dashDias,
+      de,
+      ate,
+      linhas: lancamentos,
+    },
+    ULT_BASE,
+  )
+  const dashIdx = sheets.length + 1
+  sheets.push({ nome: 'DASHBOARD', xml: dash.xml })
+
   // ---- pacote
   const arquivos: { nome: string; dados: Uint8Array }[] = []
   const overrides = sheets
@@ -1106,8 +1518,17 @@ export function gerarAmg(
     )
     .join('')
 
+  const overridesDesenho =
+    `<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>` +
+    dash.charts
+      .map(
+        (_c, i) =>
+          `<Override PartName="/xl/charts/chart${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>`,
+      )
+      .join('')
+
   const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${overrides}<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${overrides}${overridesDesenho}<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`
 
   const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`
@@ -1139,6 +1560,31 @@ export function gerarAmg(
   arquivos.push({ nome: 'xl/styles.xml', dados: texto(est.xml()) })
   sheets.forEach((s, i) => {
     arquivos.push({ nome: `xl/worksheets/sheet${i + 1}.xml`, dados: texto(s.xml) })
+  })
+
+  // ---- desenho, gráficos e vínculos da aba DASHBOARD
+  arquivos.push({ nome: 'xl/drawings/drawing1.xml', dados: texto(xmlDrawing(dash.charts)) })
+  arquivos.push({
+    nome: 'xl/drawings/_rels/drawing1.xml.rels',
+    dados: texto(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${dash.charts
+        .map(
+          (_c, i) =>
+            `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart${i + 1}.xml"/>`,
+        )
+        .join('')}</Relationships>`,
+    ),
+  })
+  dash.charts.forEach((c, i) => {
+    arquivos.push({ nome: `xl/charts/chart${i + 1}.xml`, dados: texto(xmlChart(c)) })
+  })
+  arquivos.push({
+    nome: `xl/worksheets/_rels/sheet${dashIdx}.xml.rels`,
+    dados: texto(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>`,
+    ),
   })
 
   return {
