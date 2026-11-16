@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { LogoImagem, AZUL_MARCA, AMARELO_MARCA } from '@/components/Logo'
 import {
   Card,
   CardContent,
@@ -116,14 +117,17 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 p-4">
+    <div
+      className="flex min-h-screen items-center justify-center p-4"
+      style={{ backgroundColor: AZUL_MARCA }}
+    >
       <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-2xl bg-white shadow-xl shadow-blue-500/25">
-            <HardHat className="h-12 w-12 text-blue-600" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Controle de Produção</h1>
-          <p className="mt-1 text-sm text-slate-400">Barragem 03 — acesso do administrativo</p>
+        <div className="mb-6 flex flex-col items-center text-center">
+          <LogoImagem altura={118} />
+          <h1 className="mt-5 text-2xl font-bold tracking-tight text-white">
+            Controle de Produção
+          </h1>
+          <p className="mt-1 text-sm text-slate-300">Barragem 03 — acesso do administrativo</p>
         </div>
 
         <Card className="border-slate-800 bg-white/95 shadow-2xl backdrop-blur">
@@ -239,7 +243,8 @@ export default function Login() {
               <Button
                 type="submit"
                 disabled={carregando}
-                className="w-full bg-blue-600 font-medium text-white hover:bg-blue-700"
+                style={{ backgroundColor: AMARELO_MARCA, color: AZUL_MARCA }}
+                className="w-full font-bold hover:brightness-105"
               >
                 {carregando ? (
                   <>
@@ -257,7 +262,8 @@ export default function Login() {
               {modo === 'login' && (
                 <Link
                   to="/esqueci-senha"
-                  className="text-xs font-medium text-slate-500 hover:text-blue-700 hover:underline"
+                  className="text-xs font-medium text-slate-500 hover:underline"
+                  style={{ color: AZUL_MARCA }}
                 >
                   Esqueci minha senha
                 </Link>
@@ -266,7 +272,8 @@ export default function Login() {
               <button
                 type="button"
                 onClick={trocarModo}
-                className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                className="text-xs font-medium hover:underline"
+                style={{ color: AZUL_MARCA }}
               >
                 <span className="flex items-center gap-1.5">
                   <UserPlus className="h-3.5 w-3.5" />
