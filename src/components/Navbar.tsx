@@ -77,20 +77,22 @@ export function Navbar() {
       style={{ backgroundColor: 'rgba(27,21,71,0.97)' }}
     >
       <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-4 px-3 sm:px-5 lg:px-6">
-        {/* ---------- 1. marca ---------- */}
+        {/* ---------- 1. marca ----------
+            Só a logo + "Barragem 03". O nome "Controle de Produção" saiu daqui:
+            ele já é o título da página, e escrito ao lado da logo empurrava o
+            menu ("Início" encostava no texto). */}
         <Link
           to="/"
           className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-90"
-          title="Início"
+          title="Controle de Produção · Barragem 03 — Início"
         >
           <LogoImagem altura={38} />
-          {/* a logo já diz SILVEIRA: aqui só o que identifica ESTE sistema */}
           <div className="hidden flex-col leading-tight sm:flex">
-            <span className="whitespace-nowrap text-[13px] font-bold tracking-tight text-white">
-              Controle de Produção
-            </span>
-            <span className="whitespace-nowrap text-[10.5px] font-medium text-slate-300">
+            <span className="whitespace-nowrap text-[12.5px] font-bold tracking-tight text-white">
               Barragem 03
+            </span>
+            <span className="whitespace-nowrap text-[10px] font-medium text-slate-300">
+              Produção
             </span>
           </div>
         </Link>
@@ -98,7 +100,7 @@ export function Navbar() {
         <span className="hidden h-8 w-px shrink-0 bg-white/15 lg:block" />
 
         {/* ---------- 2. menu (meio, com folga) ---------- */}
-        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 md:flex">
+        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex lg:gap-1.5">
           {itens.map((item) => {
             const Icon = item.icon
             const ativo =
