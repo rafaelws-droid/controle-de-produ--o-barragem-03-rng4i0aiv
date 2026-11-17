@@ -87,7 +87,7 @@ export function Navbar() {
           title="Controle de Produção · Barragem 03 — Início"
         >
           <LogoImagem altura={38} />
-          <div className="hidden flex-col leading-tight sm:flex">
+          <div className="hidden flex-col leading-tight lg:flex">
             <span className="whitespace-nowrap text-[12.5px] font-bold tracking-tight text-white">
               Barragem 03
             </span>
