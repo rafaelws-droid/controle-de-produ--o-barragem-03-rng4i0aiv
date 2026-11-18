@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { getErrorMessage } from '@/lib/pocketbase/errors'
 import { Lock, Mail, ArrowRight, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
@@ -176,18 +176,10 @@ export default function Login() {
                 )}
               </Button>
 
-              <Link
-                to="/esqueci-senha"
-                className="text-xs font-medium text-slate-500 hover:underline"
-                style={{ color: AZUL_MARCA }}
-              >
-                Esqueci minha senha
-              </Link>
-
               <p className="mt-1 text-center text-[11px] leading-relaxed text-slate-500">
-                Não tem acesso? Peça ao gestor para cadastrar você no menu <b>Acessos</b>.
+                Não tem acesso ou esqueceu a senha? Fale com o gestor.
                 <br />
-                Só o gestor cria contas neste sistema.
+                Só o gestor cria contas e redefine senhas neste sistema.
               </p>
             </CardFooter>
           </form>
