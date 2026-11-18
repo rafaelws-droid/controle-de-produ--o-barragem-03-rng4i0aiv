@@ -4,28 +4,28 @@
 //
 // Antes o servidor aceitava qualquer coisa: horímetro final menor que o inicial,
 // horas que não batem com o horímetro, 400 h num dia, data em 2030 e o mesmo
-// apontamento duas vezes. Testado e comprovado na auditoria de 17/11.
+// apontamento duas vezes. Comprovado na auditoria de 17/11.
 //
 // Aqui cada lançamento é conferido ANTES de gravar, e a mensagem explica o que
 // corrigir — em português, porque quem lê é o lançador.
 //
-// ATENÇÃO: toda a lógica fica DENTRO do callback. O PocketBase executa cada hook
-// num VM separado e uma função no topo do arquivo quebra em runtime.
-
-const TOLERANCIA_HORAS = 0.05 // arredondamento de horímetro, não erro de digitação
-
-/** Data de hoje em ISO (YYYY-MM-DD), no fuso do Brasil. */
-function hojeBR() {
-  const agora = new Date()
-  // o servidor roda em UTC; -3h para o horário de Brasília
-  const br = new Date(agora.getTime() - 3 * 60 * 60 * 1000)
-  const y = br.getUTCFullYear()
-  const m = String(br.getUTCMonth() + 1).padStart(2, '0')
-  const d = String(br.getUTCDate()).padStart(2, '0')
-  return y + '-' + m + '-' + d
-}
+// ATENÇÃO: TODA a lógica fica DENTRO do callback, inclusive constantes e datas.
+// O PocketBase executa cada hook num VM separado: qualquer declaração no topo
+// do arquivo quebra em runtime com ReferenceError.
 
 onRecordCreate((e) => {
+  const TOLERANCIA_HORAS = 0.05 // arredondamento de horímetro, não erro de digitação
+
+  // data de hoje no fuso do Brasil (o servidor roda em UTC)
+  const agora = new Date()
+  const br = new Date(agora.getTime() - 3 * 60 * 60 * 1000)
+  const hoje =
+    br.getUTCFullYear() +
+    '-' +
+    String(br.getUTCMonth() + 1).padStart(2, '0') +
+    '-' +
+    String(br.getUTCDate()).padStart(2, '0')
+
   const r = e.record
 
   const data = r.getString('data')
@@ -39,13 +39,11 @@ onRecordCreate((e) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
     throw new BadRequestError('A data precisa estar no formato AAAA-MM-DD.')
   }
-  const hoje = hojeBR()
   if (data > hoje) {
     throw new BadRequestError(
       'A data ' + data + ' está no futuro (hoje é ' + hoje + '). Confira a data.',
     )
   }
-  // limite de sanidade: nada antes de 2020
   if (data < '2020-01-01') {
     throw new BadRequestError('A data ' + data + ' é antiga demais. Confira o ano.')
   }
@@ -55,7 +53,7 @@ onRecordCreate((e) => {
     throw new BadRequestError('Informe o horímetro inicial e o final.')
   }
   if (hi < 0 || hf < 0) {
-    throw new BadRequestError('Horímetro não pode ser negativo.')
+    throw new BadRequestError('O horímetro não pode ser negativo.')
   }
   if (hf < hi) {
     throw new BadRequestError(
@@ -70,10 +68,9 @@ onRecordCreate((e) => {
   const variacao = Math.round((hf - hi) * 10000) / 10000
 
   // ------------------------------------------ 3. horas coerentes com o horímetro
-  // A regra é: as horas não podem PASSAR da variação do horímetro (a máquina
-  // não roda mais do que o relógio dela andou). Ficar abaixo é permitido
-  // (parada, refeição), mas uma diferença grande merece aviso — e é isso que
-  // impede o "andou 100 h e lancei 8 h" de passar batido.
+  // A máquina não roda mais do que o relógio dela andou. Ficar abaixo é
+  // permitido (parada, refeição), mas uma diferença grande é erro de leitura —
+  // é isso que impede o "andou 100 h e lancei 8 h" de passar batido.
   if (variacao > 0) {
     if (horas > variacao + TOLERANCIA_HORAS) {
       throw new BadRequestError(
@@ -81,22 +78,18 @@ onRecordCreate((e) => {
           horas +
           ' h) são MAIORES que a variação do horímetro (' +
           variacao +
-          ' h). O horímetro andou ' +
-          variacao +
-          ' h, então as horas não podem passar disso.',
+          ' h). Confira as leituras.',
       )
     }
-    // aceita até 20% de diferença (parada para refeição, manutenção no campo),
-    // mas acima disso provavelmente é horímetro errado
     const minimo = Math.round(variacao * 0.8 * 100) / 100
     if (horas > 0 && horas < minimo) {
       throw new BadRequestError(
-        'As horas lançadas (' +
+        'As horas (' +
           horas +
           ' h) estão muito abaixo do horímetro, que andou ' +
           variacao +
-          ' h. Se a máquina ficou parada, escreva isso na observação e confira a leitura. ' +
-          'Diferença aceita: até 20%.',
+          ' h. A diferença aceita é de até 20% — acima disso é leitura trocada. ' +
+          'Se a máquina ficou parada, ajuste as leituras e explique na observação.',
       )
     }
   } else if (horas > 0) {
@@ -132,10 +125,10 @@ onRecordCreate((e) => {
   }
 
   // ---------------------------------------------------------------- 6. duplicata
-  // mesmo equipamento, mesma data, mesmo horímetro = o mesmo apontamento 2x
   if (equipamento) {
+    let existentes = null
     try {
-      const existentes = $app.findRecordsByFilter(
+      existentes = $app.findRecordsByFilter(
         'lancamentos',
         'equipamento = {:eq} && data = {:data} && horimetro_inicial = {:hi} && horimetro_final = {:hf}',
         '',
@@ -143,22 +136,19 @@ onRecordCreate((e) => {
         0,
         { eq: equipamento, data: data, hi: hi, hf: hf },
       )
-      if (existentes && existentes.length > 0) {
-        throw new BadRequestError(
-          'Este apontamento já está lançado: mesmo equipamento (' +
-            equipamento +
-            '), mesma data (' +
-            data +
-            ') e mesmo horímetro (' +
-            hi +
-            ' → ' +
-            hf +
-            '). Confira em Lançamentos antes de lançar de novo.',
-        )
-      }
     } catch (err) {
-      // se o erro for o nosso, repassa; se for da consulta, não bloqueia
-      if (String(err).indexOf('já está lançado') >= 0) throw err
+      existentes = null // consulta falhou: não bloqueia o lançamento
+    }
+    if (existentes && existentes.length > 0) {
+      throw new BadRequestError(
+        'Este apontamento já está lançado: mesmo equipamento, mesma data (' +
+          data +
+          ') e mesmo horímetro (' +
+          hi +
+          ' → ' +
+          hf +
+          '). Confira em Lançamentos antes de lançar de novo.',
+      )
     }
   }
 
