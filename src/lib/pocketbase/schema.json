@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-15T04:11:34.343Z",
+  "generatedAt": "2026-11-18T00:48:48.914Z",
   "collections": [
     {
       "name": "users",
@@ -7,7 +7,7 @@
       "apiRules": {
         "list": "@request.auth.id != '' && (id = @request.auth.id || @request.auth.papel = 'GESTOR')",
         "view": "@request.auth.id != '' && (id = @request.auth.id || @request.auth.papel = 'GESTOR')",
-        "create": "@request.body.papel = 'LANCADOR'",
+        "create": "@request.auth.papel = 'GESTOR'",
         "update": "(id = @request.auth.id && @request.body.papel:changed = false) || @request.auth.papel = 'GESTOR'",
         "delete": "@request.auth.papel = 'GESTOR'"
       },
@@ -29,21 +29,29 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "papel",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["GESTOR", "LANCADOR"]
+          "selectValues": [
+            "GESTOR",
+            "LANCADOR"
+          ]
         }
       ],
       "indexes": [
@@ -91,17 +99,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_frentes_nome ON frentes (nome)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_frentes_nome ON frentes (nome)"
+      ]
     },
     {
       "name": "equipamentos",
@@ -151,14 +166,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -187,7 +207,10 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["OPERADOR", "MOTORISTA"]
+          "selectValues": [
+            "OPERADOR",
+            "MOTORISTA"
+          ]
         },
         {
           "name": "ativo",
@@ -200,17 +223,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_operadores_nome ON operadores (nome)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_operadores_nome ON operadores (nome)"
+      ]
     },
     {
       "name": "lancamentos",
@@ -340,14 +370,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "turno",
@@ -359,7 +394,8 @@
       "indexes": [
         "CREATE INDEX idx_lancamentos_data ON lancamentos (data)",
         "CREATE INDEX idx_lancamentos_equipamento ON lancamentos (equipamento)",
-        "CREATE INDEX idx_lancamentos_frente ON lancamentos (frente)"
+        "CREATE INDEX idx_lancamentos_frente ON lancamentos (frente)",
+        "CREATE INDEX `idx_lanc_duplicata` ON `lancamentos` (equipamento, data, horimetro_inicial, horimetro_final)"
       ]
     },
     {
@@ -428,14 +464,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -483,14 +524,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -533,17 +579,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_destinatarios_email ON destinatarios_relatorio (email)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_destinatarios_email ON destinatarios_relatorio (email)"
+      ]
     },
     {
       "name": "horimetro_relatorios",
@@ -585,11 +638,202 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         }
       ],
       "indexes": [
         "CREATE UNIQUE INDEX idx_horimetro_relatorios_semana ON horimetro_relatorios (semana_fim)"
+      ]
+    },
+    {
+      "name": "planos_manutencao",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.papel = 'GESTOR'",
+        "update": "@request.auth.papel = 'GESTOR'",
+        "delete": "@request.auth.papel = 'GESTOR'"
+      },
+      "fields": [
+        {
+          "name": "familia",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "CAMINHÃO",
+            "PÁ CARREGADEIRA",
+            "ESCAVADEIRA",
+            "ROLO COMPACTADOR"
+          ]
+        },
+        {
+          "name": "intervalo",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "item",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ordem",
+          "type": "number",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_plano_familia_intervalo_item ON planos_manutencao (familia, intervalo, item)",
+        "CREATE INDEX idx_plano_familia_intervalo ON planos_manutencao (familia, intervalo)"
+      ]
+    },
+    {
+      "name": "revisoes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.papel = 'GESTOR'",
+        "update": "@request.auth.papel = 'GESTOR'",
+        "delete": "@request.auth.papel = 'GESTOR'"
+      },
+      "fields": [
+        {
+          "name": "equipamento",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "equipamentos"
+        },
+        {
+          "name": "intervalo",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "horimetro",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "data",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "os_numero",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "origem",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "REGISTRADA",
+            "INFORMADA",
+            "IMPORTADA"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_revisao_equip_intervalo_horimetro ON revisoes (equipamento, intervalo, horimetro)",
+        "CREATE INDEX idx_revisao_equip ON revisoes (equipamento, intervalo, data)"
+      ]
+    },
+    {
+      "name": "ancoras_manutencao",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.papel = 'GESTOR'",
+        "update": "@request.auth.papel = 'GESTOR'",
+        "delete": "@request.auth.papel = 'GESTOR'"
+      },
+      "fields": [
+        {
+          "name": "equipamento",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "equipamentos"
+        },
+        {
+          "name": "familia",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "item",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "intervalo",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "horimetro",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "data",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "os_numero",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "evidencia",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "origem",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "SISUM_OBSERVACAO",
+            "REGISTRADA",
+            "INFORMADA"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_ancora_equip_item ON ancoras_manutencao (equipamento, item)",
+        "CREATE INDEX idx_ancora_equip ON ancoras_manutencao (equipamento, intervalo)"
       ]
     }
   ]
