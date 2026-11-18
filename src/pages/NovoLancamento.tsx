@@ -34,6 +34,7 @@ import {
   turnosService,
 } from '@/services/producao'
 import { formatHoras } from '@/lib/exportUtils'
+import { hojeISO } from '@/lib/utils'
 import {
   FLAGS,
   SERVICOS_COMUNS,
@@ -44,7 +45,9 @@ import {
   type Operador,
 } from '@/types'
 
-const hojeISO = () => new Date().toISOString().split('T')[0]
+// Data de hoje vem de `hojeISO()` em @/lib/utils, que respeita o fuso do Brasil.
+// (NÃO usar toISOString(): das 21h à meia-noite o Brasil ainda é o dia anterior
+// em UTC e o formulário abria com a data de amanhã.)
 
 export default function NovoLancamento() {
   const navigate = useNavigate()

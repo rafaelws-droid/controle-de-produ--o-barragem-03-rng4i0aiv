@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LoadError } from '@/components/LoadError'
+import { hojeISO, inicioMesISO } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import {
   equipamentosService,
@@ -26,10 +27,8 @@ import { baixarAmg } from '@/lib/xlsxAmg'
 import type { Equipamento, Frente, Lancamento, Operador } from '@/types'
 
 function primeiroDiaDoMes(): string {
-  const h = new Date()
-  return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-01`
+  return inicioMesISO()
 }
-const hojeISO = () => new Date().toISOString().split('T')[0]
 
 export default function Relatorio() {
   const { toast } = useToast()
