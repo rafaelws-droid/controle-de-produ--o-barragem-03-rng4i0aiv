@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LoadError } from '@/components/LoadError'
+import { Paginacao, POR_PAGINA } from '@/components/Paginacao'
 import { useToast } from '@/hooks/use-toast'
 import { equipamentosService, lancamentosService } from '@/services/producao'
 import { formatDataBR, formatHoras } from '@/lib/exportUtils'
@@ -47,6 +48,8 @@ export default function RelatorioHorimetros() {
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erroCarga, setErroCarga] = useState(false)
+  /** página da tabela (10 por página) */
+  const [pagina, setPagina] = useState(1)
 
   // O periodo comeca no mes corrente, mas assim que os lancamentos chegam ele
   // passa a cobrir TODO o periodo com dados. Sem isso a tela abriria zerada
@@ -113,6 +116,19 @@ export default function RelatorioHorimetros() {
   // Os cartoes refletem exatamente o que esta na tabela — senao o numero do topo
   // contradiz a lista quando ha filtro de equipamento.
   const resumo = useMemo(() => resumoHorimetros(visiveis), [visiveis])
+
+  // ---- paginação da tabela, 10 em 10 ----
+  const totalPaginas = Math.max(1, Math.ceil(visiveis.length / POR_PAGINA))
+  const paginaAtual = Math.min(pagina, totalPaginas)
+  const daPagina = useMemo(
+    () => visiveis.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA),
+    [visiveis, paginaAtual],
+  )
+
+  // mudou filtro ou período, volta para a primeira página
+  useEffect(() => {
+    setPagina(1)
+  }, [de, ate, filtro, equipamentoFiltro])
 
   const selecionado = useMemo(
     () =>
@@ -354,7 +370,7 @@ export default function RelatorioHorimetros() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {visiveis.map((l) => (
+              {daPagina.map((l) => (
                 <tr
                   key={l.equipamentoId}
                   className={
@@ -422,6 +438,16 @@ export default function RelatorioHorimetros() {
             </tfoot>
           </table>
         </div>
+      )}
+
+      {visiveis.length > 0 && (
+        <Paginacao
+          pagina={paginaAtual}
+          totalPaginas={totalPaginas}
+          totalItens={visiveis.length}
+          porPagina={POR_PAGINA}
+          onMudar={setPagina}
+        />
       )}
 
       <p className="text-[11px] leading-relaxed text-slate-500">

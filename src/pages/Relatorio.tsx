@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LoadError } from '@/components/LoadError'
+import { Paginacao, POR_PAGINA } from '@/components/Paginacao'
 import { hojeISO, inicioMesISO } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -40,6 +41,8 @@ export default function Relatorio() {
   const [operadores, setOperadores] = useState<Operador[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erroCarga, setErroCarga] = useState(false)
+  /** página do detalhamento (10 por página) */
+  const [pagina, setPagina] = useState(1)
 
   const [de, setDe] = useState(params.get('de') || primeiroDiaDoMes())
   const [ate, setAte] = useState(params.get('ate') || hojeISO())
@@ -99,6 +102,19 @@ export default function Relatorio() {
 
   const totalHoras = filtrados.reduce((a, l) => a + (l.horas || 0), 0)
   const totalViagens = filtrados.reduce((a, l) => a + (l.viagens || 0), 0)
+
+  // ---- paginação do detalhamento, 10 em 10 ----
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / POR_PAGINA))
+  const paginaAtual = Math.min(pagina, totalPaginas)
+  const daPagina = useMemo(
+    () => filtrados.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA),
+    [filtrados, paginaAtual],
+  )
+
+  // mudou o filtro, volta para a primeira página
+  useEffect(() => {
+    setPagina(1)
+  }, [de, ate, frente, equipamento, operador])
 
   const periodo = `${de ? formatDataBR(de) : 'início'} a ${ate ? formatDataBR(ate) : 'hoje'}`
 
@@ -455,7 +471,7 @@ export default function Relatorio() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtrados.map((l) => (
+            {daPagina.map((l) => (
               <tr key={l.id} className="hover:bg-slate-50/70">
                 <td className="whitespace-nowrap px-3 py-2">{formatDataBR(l.data)}</td>
                 <td className="px-3 py-2 text-slate-600">{l.expand?.frente?.nome || '-'}</td>
@@ -486,6 +502,16 @@ export default function Relatorio() {
           </tfoot>
         </table>
       </div>
+
+      {filtrados.length > 0 && (
+        <Paginacao
+          pagina={paginaAtual}
+          totalPaginas={totalPaginas}
+          totalItens={filtrados.length}
+          porPagina={POR_PAGINA}
+          onMudar={setPagina}
+        />
+      )}
     </div>
   )
 }
