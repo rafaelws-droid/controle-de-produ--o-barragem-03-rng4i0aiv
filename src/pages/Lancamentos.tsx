@@ -49,6 +49,9 @@ export default function Lancamentos() {
   const [ate, setAte] = useState('')
   /** true = mostrar só os lançamentos marcados para conferência */
   const [soConferir, setSoConferir] = useState(false)
+  /** paginação: a lista passa de mil linhas e não pode carregar tudo na tela */
+  const [pagina, setPagina] = useState(1)
+  const POR_PAGINA = 10
 
   const carregar = async () => {
     try {
@@ -98,6 +101,20 @@ export default function Lancamentos() {
 
   const totalHoras = filtrados.reduce((a, l) => a + (l.horas || 0), 0)
   const totalViagens = filtrados.reduce((a, l) => a + (l.viagens || 0), 0)
+
+  // ---- paginação de 10 em 10 ----
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / POR_PAGINA))
+  const paginaAtual = Math.min(pagina, totalPaginas)
+  /** só esta fatia vai para a tabela: é o que deixa a tela leve */
+  const daPagina = useMemo(
+    () => filtrados.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA),
+    [filtrados, paginaAtual],
+  )
+
+  // qualquer filtro novo volta para a primeira página
+  useEffect(() => {
+    setPagina(1)
+  }, [frenteFiltro, de, ate, busca, soConferir])
 
   const excluir = async (l: Lancamento) => {
     const ok = window.confirm(
@@ -264,7 +281,7 @@ export default function Lancamentos() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtrados.map((l) => (
+              {daPagina.map((l) => (
                 <tr
                   key={l.id}
                   className={
@@ -358,6 +375,64 @@ export default function Lancamentos() {
               </tr>
             </tfoot>
           </table>
+        </div>
+      )}
+
+      {/* paginação de 10 em 10 */}
+      {filtrados.length > 0 && (
+        <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
+          <p className="text-[11.5px] text-slate-500">
+            Mostrando{' '}
+            <b className="text-slate-800">
+              {(paginaAtual - 1) * POR_PAGINA + 1}–
+              {Math.min(paginaAtual * POR_PAGINA, filtrados.length)}
+            </b>{' '}
+            de <b className="text-slate-800">{filtrados.length}</b> lançamentos · {totalPaginas}{' '}
+            página(s)
+          </p>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPagina(1)}
+              disabled={paginaAtual === 1}
+              className="h-9 px-2"
+              title="Primeira página"
+            >
+              «
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPagina((p) => Math.max(1, p - 1))}
+              disabled={paginaAtual === 1}
+              className="h-9 px-3 font-semibold"
+            >
+              Anterior
+            </Button>
+            <span className="min-w-[70px] text-center text-[12px] font-bold text-slate-700">
+              {paginaAtual} / {totalPaginas}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+              disabled={paginaAtual === totalPaginas}
+              className="h-9 px-3 font-semibold"
+            >
+              Próxima
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPagina(totalPaginas)}
+              disabled={paginaAtual === totalPaginas}
+              className="h-9 px-2"
+              title="Última página"
+            >
+              »
+            </Button>
+          </div>
         </div>
       )}
     </div>
