@@ -72,6 +72,10 @@ export interface Lancamento {
   disposicao?: boolean
   substituindo?: string
   observacao?: string
+  /** true = as horas ficaram abaixo do horímetro; pede conferência do gestor */
+  conferir?: boolean
+  /** texto que explica por que o lançamento foi marcado */
+  motivo_conferir?: string
   created?: string
   expand?: {
     frente?: Frente

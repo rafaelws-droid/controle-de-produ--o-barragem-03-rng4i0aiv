@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { History, PlusCircle, Loader2, Search, Trash2, Pencil, CalendarDays } from 'lucide-react'
+import {
+  History,
+  PlusCircle,
+  Loader2,
+  Search,
+  Trash2,
+  Pencil,
+  CalendarDays,
+  AlertTriangle,
+  Eye,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -37,6 +47,8 @@ export default function Lancamentos() {
   const [frenteFiltro, setFrenteFiltro] = useState('')
   const [de, setDe] = useState('')
   const [ate, setAte] = useState('')
+  /** true = mostrar só os lançamentos marcados para conferência */
+  const [soConferir, setSoConferir] = useState(false)
 
   const carregar = async () => {
     try {
@@ -69,6 +81,7 @@ export default function Lancamentos() {
       if (frenteFiltro && l.frente !== frenteFiltro) return false
       if (de && l.data < de) return false
       if (ate && l.data > ate) return false
+      if (soConferir && !l.conferir) return false
       if (busca.trim()) {
         const alvo = busca.trim().toUpperCase()
         const texto = [nomeEquipamento(l), nomeOperador(l), l.servico, l.expand?.frente?.nome || '']
@@ -78,7 +91,10 @@ export default function Lancamentos() {
       }
       return true
     })
-  }, [lancamentos, frenteFiltro, de, ate, busca])
+  }, [lancamentos, frenteFiltro, de, ate, busca, soConferir])
+
+  /** Quantos lançamentos do período pedem conferência. */
+  const totalConferir = useMemo(() => filtrados.filter((l) => l.conferir).length, [filtrados])
 
   const totalHoras = filtrados.reduce((a, l) => a + (l.horas || 0), 0)
   const totalViagens = filtrados.reduce((a, l) => a + (l.viagens || 0), 0)
@@ -192,6 +208,32 @@ export default function Lancamentos() {
         </CardContent>
       </Card>
 
+      {/* aviso de conferência: só aparece quando existe algum marcado */}
+      {totalConferir > 0 && (
+        <div className="flex flex-col gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex items-start gap-2 text-[12.5px] text-amber-900">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <b>{totalConferir} lançamento(s)</b> com as horas abaixo do horímetro — normalmente
+              parada da máquina. Vale conferir.
+            </span>
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSoConferir((v) => !v)}
+            className={
+              soConferir
+                ? 'border-amber-500 bg-amber-500 font-bold text-white hover:bg-amber-600'
+                : 'border-amber-400 text-amber-800 hover:bg-amber-100'
+            }
+          >
+            <Eye className="mr-1.5 h-3.5 w-3.5" />
+            {soConferir ? 'Mostrando só os marcados' : 'Ver só os marcados'}
+          </Button>
+        </div>
+      )}
+
       {filtrados.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
           <CalendarDays className="mb-3 h-12 w-12 text-slate-300" />
@@ -223,9 +265,22 @@ export default function Lancamentos() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtrados.map((l) => (
-                <tr key={l.id} className="hover:bg-slate-50/70">
+                <tr
+                  key={l.id}
+                  className={
+                    l.conferir ? 'bg-amber-50/80 hover:bg-amber-50' : 'hover:bg-slate-50/70'
+                  }
+                >
                   <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-700">
-                    {formatDataBR(l.data)}
+                    <span className="flex items-center gap-1">
+                      {l.conferir && (
+                        <AlertTriangle
+                          className="h-3.5 w-3.5 shrink-0 text-amber-600"
+                          aria-label="Conferir"
+                        />
+                      )}
+                      {formatDataBR(l.data)}
+                    </span>
                   </td>
                   <td className="px-3 py-2 text-slate-600">{l.expand?.frente?.nome || '-'}</td>
                   <td className="whitespace-nowrap px-3 py-2 font-semibold text-slate-800">
@@ -252,6 +307,11 @@ export default function Lancamentos() {
                     )}
                     {l.observacao && (
                       <p className="truncate text-[10px] text-slate-400">{l.observacao}</p>
+                    )}
+                    {l.conferir && l.motivo_conferir && (
+                      <p className="mt-0.5 text-[10px] font-semibold text-amber-700">
+                        ⚠ {l.motivo_conferir}
+                      </p>
                     )}
                   </td>
                   <td className="whitespace-nowrap px-3 py-2">

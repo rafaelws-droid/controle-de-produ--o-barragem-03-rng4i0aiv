@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-18T00:48:48.914Z",
+  "generatedAt": "2026-11-18T01:04:05.879Z",
   "collections": [
     {
       "name": "users",
@@ -29,21 +29,29 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "papel",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["GESTOR", "LANCADOR"]
+          "selectValues": [
+            "GESTOR",
+            "LANCADOR"
+          ]
         }
       ],
       "indexes": [
@@ -91,17 +99,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_frentes_nome ON frentes (nome)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_frentes_nome ON frentes (nome)"
+      ]
     },
     {
       "name": "equipamentos",
@@ -151,14 +166,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -187,7 +207,10 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["OPERADOR", "MOTORISTA"]
+          "selectValues": [
+            "OPERADOR",
+            "MOTORISTA"
+          ]
         },
         {
           "name": "ativo",
@@ -200,17 +223,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_operadores_nome ON operadores (nome)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_operadores_nome ON operadores (nome)"
+      ]
     },
     {
       "name": "lancamentos",
@@ -340,19 +370,36 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "turno",
           "type": "text",
           "required": true,
+          "system": false
+        },
+        {
+          "name": "conferir",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "motivo_conferir",
+          "type": "text",
+          "required": false,
           "system": false
         }
       ],
@@ -429,14 +476,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -484,14 +536,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -534,17 +591,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_destinatarios_email ON destinatarios_relatorio (email)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_destinatarios_email ON destinatarios_relatorio (email)"
+      ]
     },
     {
       "name": "horimetro_relatorios",
@@ -586,7 +650,9 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         }
       ],
       "indexes": [
@@ -609,7 +675,12 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["CAMINHÃO", "PÁ CARREGADEIRA", "ESCAVADEIRA", "ROLO COMPACTADOR"]
+          "selectValues": [
+            "CAMINHÃO",
+            "PÁ CARREGADEIRA",
+            "ESCAVADEIRA",
+            "ROLO COMPACTADOR"
+          ]
         },
         {
           "name": "intervalo",
@@ -688,7 +759,11 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["REGISTRADA", "INFORMADA", "IMPORTADA"]
+          "selectValues": [
+            "REGISTRADA",
+            "INFORMADA",
+            "IMPORTADA"
+          ]
         }
       ],
       "indexes": [
@@ -761,7 +836,11 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["SISUM_OBSERVACAO", "REGISTRADA", "INFORMADA"]
+          "selectValues": [
+            "SISUM_OBSERVACAO",
+            "REGISTRADA",
+            "INFORMADA"
+          ]
         }
       ],
       "indexes": [

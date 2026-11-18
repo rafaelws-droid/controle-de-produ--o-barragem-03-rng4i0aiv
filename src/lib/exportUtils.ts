@@ -62,10 +62,12 @@ export function sanitizeFilename(valor: string): string {
 export function resumo(lancamentos: Lancamento[]) {
   const horas = lancamentos.reduce((acc, l) => acc + (l.horas || 0), 0)
   const viagens = lancamentos.reduce((acc, l) => acc + (l.viagens || 0), 0)
+  const aConferir = lancamentos.filter((l) => l.conferir).length
   return {
     quantidade: lancamentos.length,
     horas: Number(horas.toFixed(2)),
     viagens,
+    aConferir,
   }
 }
 
@@ -81,6 +83,8 @@ const CABECALHO = [
   'Viagens',
   'Serviço',
   'Observação',
+  'Conferir',
+  'Motivo',
 ]
 
 function linhaDe(l: Lancamento): (string | number)[] {
@@ -96,6 +100,8 @@ function linhaDe(l: Lancamento): (string | number)[] {
     l.viagens || 0,
     l.servico || '',
     descreverMarcacoes(l) + (l.observacao ? ` (${l.observacao})` : ''),
+    l.conferir ? 'CONFERIR' : '',
+    l.conferir ? l.motivo_conferir || '' : '',
   ]
 }
 
@@ -108,7 +114,21 @@ function planilhaDe(nome: string, lancamentos: Lancamento[]): Planilha {
     CABECALHO,
     ...lancamentos.map(linhaDe),
     [],
-    ['TOTAL', '', '', '', '', '', '', r.horas, r.viagens, `${r.quantidade} lançamentos`, ''],
+    [
+      'TOTAL',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      r.horas,
+      r.viagens,
+      `${r.quantidade} lançamentos`,
+      '',
+      r.aConferir > 0 ? `${r.aConferir} a conferir` : '',
+      '',
+    ],
   ]
   return { nome, linhas }
 }
@@ -140,7 +160,21 @@ export function exportarCsv(lancamentos: Lancamento[], periodo: string): void {
     CABECALHO,
     ...lancamentos.map(linhaDe),
     [],
-    ['TOTAL', '', '', '', '', '', '', formatHoras(r.horas), r.viagens, '', ''],
+    [
+      'TOTAL',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      formatHoras(r.horas),
+      r.viagens,
+      '',
+      '',
+      r.aConferir > 0 ? `${r.aConferir} a conferir` : '',
+      '',
+    ],
   ]
   const csv = linhas.map((l) => l.map(escapeCsv).join(';')).join('\r\n')
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
@@ -176,8 +210,8 @@ export function exportarPdf(lancamentos: Lancamento[], periodo: string): void {
         <tbody>
           ${lista
             .map(
-              (l) => `<tr>
-            <td>${formatDataBR(l.data)}</td>
+              (l) => `<tr${l.conferir ? ' class="conferir"' : ''}>
+            <td>${formatDataBR(l.data)}${l.conferir ? ' <b>⚠</b>' : ''}</td>
             <td>${nomeEquipamento(l)}</td>
             <td>${nomeOperador(l)}</td>
             <td>${l.turno || ''}</td>
@@ -186,7 +220,11 @@ export function exportarPdf(lancamentos: Lancamento[], periodo: string): void {
             <td><b>${formatHoras(l.horas)}</b></td>
             <td>${l.viagens || ''}</td>
             <td class="serv">${l.servico || ''}</td>
-            <td class="obs">${descreverMarcacoes(l)}${l.observacao ? ` (${l.observacao})` : ''}</td>
+            <td class="obs">${descreverMarcacoes(l)}${l.observacao ? ` (${l.observacao})` : ''}${
+              l.conferir && l.motivo_conferir
+                ? `<br><b class="alerta">${l.motivo_conferir}</b>`
+                : ''
+            }</td>
           </tr>`,
             )
             .join('')}
@@ -219,6 +257,10 @@ export function exportarPdf(lancamentos: Lancamento[], periodo: string): void {
     tfoot td { font-weight: bold; background: #f8fafc; }
     .serv { max-width: 210px; }
     .obs { max-width: 150px; font-size: 8px; }
+    tr.conferir { background: #fef3c7; }
+    .alerta { color: #92400e; font-size: 7.5px; }
+    .card.aviso { border-color: #f59e0b; background: #fffbeb; }
+    .card.aviso b { color: #b45309; }
     @page { size: A4 landscape; margin: 10mm; }
     @media print { body { margin: 0; } h2 { break-after: avoid; } table { break-inside: auto; } tr { break-inside: avoid; } }
   </style></head><body>
@@ -231,7 +273,15 @@ export function exportarPdf(lancamentos: Lancamento[], periodo: string): void {
     <div class="card">Total de horas<b>${formatHoras(r.horas)} h</b></div>
     <div class="card">Total de viagens<b>${r.viagens}</b></div>
     <div class="card">Frentes<b>${linhasPorFrente.size}</b></div>
+    ${r.aConferir > 0 ? `<div class="card aviso">A conferir<b>${r.aConferir}</b></div>` : ''}
   </div>
+  ${
+    r.aConferir > 0
+      ? `<p style="font-size:10px;color:#92400e;background:#fffbeb;border-left:4px solid #f59e0b;padding:6px 9px;margin:0 0 12px">
+           As linhas em amarelo estão com as horas abaixo do horímetro (parada da máquina). Confira antes de fechar o ciclo.
+         </p>`
+      : ''
+  }
   ${blocos.join('')}
   <script>window.onload = function () { window.print() }</script>
   </body></html>`

@@ -81,15 +81,24 @@ onRecordCreate((e) => {
           ' h). Confira as leituras.',
       )
     }
+    // ------------------------------------------------ AVISO, NÃO BLOQUEIO
+    // Decisão do Rafael (17/11): se a máquina parou (chuva, manutenção), o
+    // lançador não pode ficar travado. Grava, mas MARCA para conferência.
+    //   · até 20% abaixo do horímetro  → normal, sem marcação
+    //   · acima de 20% abaixo          → grava e marca em amarelo
     const minimo = Math.round(variacao * 0.8 * 100) / 100
     if (horas > 0 && horas < minimo) {
-      throw new BadRequestError(
-        'As horas (' +
-          horas +
-          ' h) estão muito abaixo do horímetro, que andou ' +
+      const diferenca = Math.round((variacao - horas) * 100) / 100
+      r.set('conferir', true)
+      r.set(
+        'motivo_conferir',
+        'Horímetro andou ' +
           variacao +
-          ' h. A diferença aceita é de até 20% — acima disso é leitura trocada. ' +
-          'Se a máquina ficou parada, ajuste as leituras e explique na observação.',
+          ' h e foram lançadas ' +
+          horas +
+          ' h (' +
+          diferenca +
+          ' h de diferença). Confira se houve parada.',
       )
     }
   } else if (horas > 0) {
