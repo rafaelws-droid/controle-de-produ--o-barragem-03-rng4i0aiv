@@ -55,6 +55,40 @@ export const lancamentosService = {
     })
   },
 
+  /**
+   * Lançamentos de um período, paginados no SERVIDOR.
+   *
+   * POR QUE ISSO EXISTE: antes as telas chamavam `getAll()` e traziam a coleção
+   * inteira para o navegador — com 1.800 registros eram vários segundos no
+   * celular, e o volume só cresce durante o mês de teste. Aqui o filtro de data
+   * vai para o servidor (que usa o índice `idx_lanc_data_equip`) e a tela recebe
+   * só o que precisa mostrar.
+   */
+  async getPeriodo(de: string, ate: string, limite = 5000): Promise<Lancamento[]> {
+    const todos: Lancamento[] = []
+    let pagina = 1
+    const filtro = `data >= "${de}" && data <= "${ate}"`
+    for (;;) {
+      const res = await pb.collection('lancamentos').getList<Lancamento>(pagina, 500, {
+        filter: filtro,
+        sort: '-data,-created',
+        expand: EXPAND,
+      })
+      todos.push(...res.items)
+      if (pagina >= res.totalPages || res.items.length === 0 || todos.length >= limite) break
+      pagina += 1
+    }
+    return todos
+  },
+
+  /** Contagem rápida de um período — para o resumo sem baixar os registros. */
+  async contarPeriodo(de: string, ate: string): Promise<number> {
+    const res = await pb.collection('lancamentos').getList(1, 1, {
+      filter: `data >= "${de}" && data <= "${ate}"`,
+    })
+    return res.totalItems
+  },
+
   getById: (id: string) => pb.collection('lancamentos').getOne<Lancamento>(id, { expand: EXPAND }),
 
   async getRecentes(limite = 8): Promise<Lancamento[]> {

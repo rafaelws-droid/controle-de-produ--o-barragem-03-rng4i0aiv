@@ -32,6 +32,17 @@ import {
   nomeOperador,
 } from '@/lib/exportUtils'
 import type { Equipamento, Frente, Lancamento, Operador } from '@/types'
+import { hojeISO } from '@/lib/utils'
+
+/** Janela padrão da tela: os últimos 60 dias (cobre o ciclo corrente). */
+function defaultDe(): string {
+  const hoje = hojeISO()
+  const [a, m, d] = hoje.split('-').map(Number)
+  const dt = new Date(a, m - 1, d - 60)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(
+    dt.getDate(),
+  ).padStart(2, '0')}`
+}
 
 export default function Lancamentos() {
   const { toast } = useToast()
@@ -53,20 +64,28 @@ export default function Lancamentos() {
   const [pagina, setPagina] = useState(1)
   const POR_PAGINA = 10
 
+  /**
+   * Só os cadastros vêm completos (são pequenos: 19 equipamentos, 9 frentes).
+   * Os lançamentos vêm filtrados: sem filtro de data a tela pede os últimos 90
+   * dias, em vez de baixar a coleção inteira — é o que mantém o menu rápido no
+   * celular. Ao escolher De/Até, a busca vai para o servidor.
+   */
   const carregar = async () => {
     try {
       setCarregando(true)
       setErroCarga(false)
-      const [ls, fs, es, os] = await Promise.all([
-        lancamentosService.getAll(),
+      const [fs, es, os] = await Promise.all([
         frentesService.getAll(),
         equipamentosService.getAll(),
         operadoresService.getAll(),
       ])
-      setLancamentos(ls)
       setFrentes(fs)
       setEquipamentos(es)
       setOperadores(os)
+
+      const deBusca = de || defaultDe()
+      const ateBusca = ate || hojeISO()
+      setLancamentos(await lancamentosService.getPeriodo(deBusca, ateBusca))
     } catch (e) {
       console.error(e)
       setErroCarga(true)
@@ -75,9 +94,11 @@ export default function Lancamentos() {
     }
   }
 
+  /** Recarrega quando o usuário escolhe um período (só então vai ao servidor). */
   useEffect(() => {
     void carregar()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [de, ate])
 
   const filtrados = useMemo(() => {
     return lancamentos.filter((l) => {
