@@ -20,6 +20,10 @@ export interface LeituraEquipamento {
 
 export interface ResumoHorimetro {
   equipamento: Equipamento
+  /** primeira leitura do período — onde o horímetro estava quando o período começou */
+  horimetroAnterior: number
+  /** data da primeira leitura do período */
+  dataAnterior: string
   /** maior horímetro encontrado no período */
   horimetroAtual: number
   dataAtual: string
@@ -120,12 +124,20 @@ export function montarResumo(
 
       const horimetroAtual = leituras.reduce((m, l) => Math.max(m, l.horimetroFinal), 0)
       const dataAtual = ultima?.data ?? ''
+      // "horímetro anterior" = a PRIMEIRA leitura do período (o inicial dela).
+      // "horímetro atual"    = a ÚLTIMA leitura (o final dela).
+      // A diferença entre os dois é o que a máquina andou no período.
+      const primeira = leituras[0]
+      const horimetroAnterior = primeira ? primeira.horimetroInicial : 0
+      const dataAnterior = primeira?.data ?? ''
       const diasSemApontamento = ultima
         ? Math.max(0, diasEntre(ultima.data, referencia) - 1)
         : diasEntre(referencia, referencia) + 999 // sem leitura nenhuma no periodo
 
       return {
         equipamento: eq,
+        horimetroAnterior,
+        dataAnterior,
         horimetroAtual,
         dataAtual,
         horas,

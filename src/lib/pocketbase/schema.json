@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-18T01:04:05.879Z",
+  "generatedAt": "2026-11-23T19:43:33.908Z",
   "collections": [
     {
       "name": "users",
@@ -29,21 +29,29 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "papel",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["GESTOR", "LANCADOR"]
+          "selectValues": [
+            "GESTOR",
+            "LANCADOR"
+          ]
         }
       ],
       "indexes": [
@@ -91,17 +99,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_frentes_nome ON frentes (nome)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_frentes_nome ON frentes (nome)"
+      ]
     },
     {
       "name": "equipamentos",
@@ -151,14 +166,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -187,7 +207,10 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["OPERADOR", "MOTORISTA"]
+          "selectValues": [
+            "OPERADOR",
+            "MOTORISTA"
+          ]
         },
         {
           "name": "ativo",
@@ -200,17 +223,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_operadores_nome ON operadores (nome)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_operadores_nome ON operadores (nome)"
+      ]
     },
     {
       "name": "lancamentos",
@@ -340,14 +370,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "turno",
@@ -372,7 +407,10 @@
         "CREATE INDEX idx_lancamentos_data ON lancamentos (data)",
         "CREATE INDEX idx_lancamentos_equipamento ON lancamentos (equipamento)",
         "CREATE INDEX idx_lancamentos_frente ON lancamentos (frente)",
-        "CREATE INDEX `idx_lanc_duplicata` ON `lancamentos` (equipamento, data, horimetro_inicial, horimetro_final)"
+        "CREATE INDEX `idx_lanc_duplicata` ON `lancamentos` (equipamento, data, horimetro_inicial, horimetro_final)",
+        "CREATE INDEX `idx_lanc_data_equip` ON `lancamentos` (data, equipamento)",
+        "CREATE INDEX `idx_lanc_data_frente` ON `lancamentos` (data, frente)",
+        "CREATE INDEX `idx_lanc_equip_data_desc` ON `lancamentos` (equipamento, data DESC)"
       ]
     },
     {
@@ -441,14 +479,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -496,14 +539,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -546,17 +594,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_destinatarios_email ON destinatarios_relatorio (email)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_destinatarios_email ON destinatarios_relatorio (email)"
+      ]
     },
     {
       "name": "horimetro_relatorios",
@@ -598,7 +653,9 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         }
       ],
       "indexes": [
@@ -621,7 +678,12 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["CAMINHÃO", "PÁ CARREGADEIRA", "ESCAVADEIRA", "ROLO COMPACTADOR"]
+          "selectValues": [
+            "CAMINHÃO",
+            "PÁ CARREGADEIRA",
+            "ESCAVADEIRA",
+            "ROLO COMPACTADOR"
+          ]
         },
         {
           "name": "intervalo",
@@ -700,7 +762,11 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["REGISTRADA", "INFORMADA", "IMPORTADA"]
+          "selectValues": [
+            "REGISTRADA",
+            "INFORMADA",
+            "IMPORTADA"
+          ]
         }
       ],
       "indexes": [
@@ -773,7 +839,11 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["SISUM_OBSERVACAO", "REGISTRADA", "INFORMADA"]
+          "selectValues": [
+            "SISUM_OBSERVACAO",
+            "REGISTRADA",
+            "INFORMADA"
+          ]
         }
       ],
       "indexes": [

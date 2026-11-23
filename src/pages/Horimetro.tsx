@@ -159,7 +159,9 @@ export function Horimetro() {
                   <tr>
                     <th className="px-3 py-2">Equipamento</th>
                     <th className="px-3 py-2">Categoria</th>
+                    <th className="px-3 py-2 text-right">Horímetro anterior</th>
                     <th className="px-3 py-2 text-right">Horímetro atual</th>
+                    <th className="px-3 py-2 text-right">Andou</th>
                     <th className="px-3 py-2">Última leitura</th>
                     <th className="px-3 py-2 text-right">Horas no período</th>
                     <th className="px-3 py-2 text-right">h/dia</th>
@@ -174,8 +176,14 @@ export function Horimetro() {
                         {r.equipamento.identificacao}
                       </td>
                       <td className="px-3 py-2 text-slate-600">{r.equipamento.categoria || '—'}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-slate-500">
+                        {formatHoras(r.horimetroAnterior)}
+                      </td>
                       <td className="px-3 py-2 text-right font-bold tabular-nums text-blue-700">
                         {formatHoras(r.horimetroAtual)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums font-semibold text-emerald-700">
+                        {formatHoras(r.horas)}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-slate-600">
                         {r.dataAtual ? formatDataBR(r.dataAtual) : '—'}
@@ -215,9 +223,11 @@ export function Horimetro() {
       </Card>
 
       <p className="text-[11px] leading-relaxed text-slate-500">
-        O horímetro vem do campo “horímetro final” do último lançamento de cada equipamento. h/dia é
-        a média por dia com apontamento. Para ver o detalhe dia a dia de uma máquina, use o “Ver” ou
-        a aba Horímetros em Relatórios.
+        <b>Horímetro anterior</b> é a primeira leitura do período e <b>horímetro atual</b> é a
+        última: a diferença entre os dois é o que a máquina andou. A coluna <b>Andou</b> mostra esse
+        total, que é o mesmo das horas apontadas no período. h/dia é a média por dia com
+        apontamento. Para o detalhe dia a dia de uma máquina, use o “Ver” ou a aba Horímetros em
+        Relatórios.
       </p>
     </div>
   )
