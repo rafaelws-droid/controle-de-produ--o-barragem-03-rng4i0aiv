@@ -84,8 +84,9 @@ export function Horimetro() {
             <Gauge className="h-7 w-7 text-blue-600" /> Horímetro
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Leitura de cada equipamento da frota, vinda dos lançamentos do Controle de Produção.
-            Horímetro atual é a última leitura registrada.
+            Leitura de cada equipamento da frota, vinda dos lançamentos do Controle de Produção: do{' '}
+            <b>horímetro anterior</b> (primeira leitura do período) ao <b>horímetro atual</b>
+            (última leitura).
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
