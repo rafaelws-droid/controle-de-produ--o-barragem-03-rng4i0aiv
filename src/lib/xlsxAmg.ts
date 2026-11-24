@@ -1477,37 +1477,19 @@ export function gerarAmg(
     })
   }
 
-  // ---- abas de apoio ao filtro: BASE (plana, filtrável) e PAINEL (cartões)
-  const apoio = montarAbasFiltro(est, lancamentos, de, ate)
-  const baseIdx = sheets.length + 1
-  sheets.push({ nome: apoio.base.nome, xml: apoio.base.xml })
-  sheets.push({ nome: apoio.painel.nome, xml: apoio.painel.xml })
-
-  // ---- aba DASHBOARD (seletores + cartões + 4 gráficos nativos)
-  const noPeriodo = lancamentos.filter((l) => l.data >= de && l.data <= ate)
-  const dashEquips = [...new Set(noPeriodo.map((l) => l.expand?.equipamento?.identificacao || ''))]
-    .filter(Boolean)
-    .sort()
-  const dashFrentes = [...new Set(noPeriodo.map((l) => nomeFrente(l)))].filter(Boolean).sort()
-  const dashTurnos = [...new Set(noPeriodo.map((l) => l.turno || ''))].filter(Boolean).sort()
-  const dashDias = [...new Set(noPeriodo.map((l) => l.data))].sort()
-  const ULT_BASE = parseInt(apoio.base.filtro.split(':')[1].replace(/[A-Z]+/, ''), 10)
-
-  const dash = montarAbaDashboard(
-    {
-      est,
-      equipamentos: dashEquips,
-      frentes: dashFrentes,
-      turnos: dashTurnos,
-      dias: dashDias,
-      de,
-      ate,
-      linhas: lancamentos,
-    },
-    ULT_BASE,
-  )
-  const dashIdx = sheets.length + 1
-  sheets.push({ nome: 'DASHBOARD', xml: dash.xml })
+  // ---- ABAS DE APOIO REMOVIDAS (pedido do Rafael em 24/11)
+  // O arquivo passa a ter SOMENTE as 9 abas originais da AMG, uma por frente.
+  // Saíram:
+  //   · BASE      — a lista plana que alimentava as fórmulas
+  //   · PAINEL    — cartões com soma do que estava filtrado
+  //   · DASHBOARD — seletores, 4 tabelas e 4 gráficos nativos
+  //
+  // Consequência assumida: o arquivo deixa de ter filtro interativo e gráfico.
+  // Ele volta a ser o que a AMG usa: uma aba por frente, com os totais no pé.
+  // As funções montarAbasFiltro/montarAbaDashboard continuam no módulo, sem uso,
+  // para que voltar atrás seja só restaurar estas linhas.
+  const apoio = null as null | { base: { nome: string; xml: string; filtro: string } }
+  const dash = null as null | { xml: string; charts: unknown[] }
 
   // ---- pacote
   const arquivos: { nome: string; dados: Uint8Array }[] = []
@@ -1518,14 +1500,8 @@ export function gerarAmg(
     )
     .join('')
 
-  const overridesDesenho =
-    `<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>` +
-    dash.charts
-      .map(
-        (_c, i) =>
-          `<Override PartName="/xl/charts/chart${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>`,
-      )
-      .join('')
+  // sem DASHBOARD não há desenho nem gráfico para declarar no pacote
+  const overridesDesenho = ''
 
   const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${overrides}${overridesDesenho}<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`
@@ -1533,10 +1509,8 @@ export function gerarAmg(
   const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`
 
-  // O nome da aba BASE é reservado com _xlnm._FilterDatabase: é isso que faz o
-  // Excel guardar o filtro do arquivo (sem isso as setinhas somem ao reabrir).
-  const ultimaBaseNum = apoio.base.filtro.split(':')[1].replace(/[A-Z]+/, '')
-  const nomeReservado = `<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="${baseIdx - 1}" hidden="1">'${esc(apoio.base.nome)}'!$A$1:$N$${ultimaBaseNum}</definedName></definedNames>`
+  // Sem a aba BASE não existe nome reservado de filtro para declarar.
+  const nomeReservado = ''
 
   const workbook = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets
@@ -1562,30 +1536,8 @@ export function gerarAmg(
     arquivos.push({ nome: `xl/worksheets/sheet${i + 1}.xml`, dados: texto(s.xml) })
   })
 
-  // ---- desenho, gráficos e vínculos da aba DASHBOARD
-  arquivos.push({ nome: 'xl/drawings/drawing1.xml', dados: texto(xmlDrawing(dash.charts)) })
-  arquivos.push({
-    nome: 'xl/drawings/_rels/drawing1.xml.rels',
-    dados: texto(
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${dash.charts
-        .map(
-          (_c, i) =>
-            `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart${i + 1}.xml"/>`,
-        )
-        .join('')}</Relationships>`,
-    ),
-  })
-  dash.charts.forEach((c, i) => {
-    arquivos.push({ nome: `xl/charts/chart${i + 1}.xml`, dados: texto(xmlChart(c)) })
-  })
-  arquivos.push({
-    nome: `xl/worksheets/_rels/sheet${dashIdx}.xml.rels`,
-    dados: texto(
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>`,
-    ),
-  })
+  // Sem DASHBOARD: nenhum desenho, gráfico ou vínculo de desenho é gravado.
+  // O pacote fica só com as 9 abas + estilos, que é o que a AMG espera.
 
   return {
     bytes: montarZip(arquivos),
