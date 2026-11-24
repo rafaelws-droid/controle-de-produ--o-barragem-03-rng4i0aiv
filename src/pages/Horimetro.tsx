@@ -78,11 +78,14 @@ export function Horimetro() {
 
   const total = useMemo(
     () => ({
-      horas: resumos.reduce((s, r) => s + r.horas, 0),
+      /** soma dos totais de conferência diária de todos os equipamentos */
+      totalDia: resumos.reduce((s, r) => s + r.totalDoisUltimos, 0),
       equipamentos: resumos.length,
       semApontamento: resumos.filter((r) => r.diasSemApontamento >= 3).length,
       descartados: resumos.reduce((s, r) => s + r.descartados, 0),
-      divergentes: resumos.filter((r) => r.ultimo && Math.abs(r.andou - r.horas) > 0.05).length,
+      /** equipamentos cujo total do intervalo não bate com as horas apontadas */
+      divergentes: resumos.filter((r) => Math.abs(r.totalDoisUltimos - r.horasDoisUltimos) > 0.05)
+        .length,
     }),
     [resumos],
   )
@@ -130,12 +133,13 @@ export function Horimetro() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-4">
-        <Card className="border-slate-200">
+        <Card className="border-blue-200 bg-blue-50/60">
           <CardContent className="p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-              Horas no período
+            <p className="text-xs font-medium uppercase tracking-wide text-blue-700">
+              Total dos 2 últimos
             </p>
-            <p className="mt-1 text-2xl font-bold text-blue-700">{formatHoras(total.horas)} h</p>
+            <p className="mt-1 text-2xl font-bold text-blue-800">{formatHoras(total.totalDia)} h</p>
+            <p className="text-[10px] text-blue-700">soma do intervalo de todos os equipamentos</p>
           </CardContent>
         </Card>
         <Card className="border-slate-200">
@@ -156,11 +160,9 @@ export function Horimetro() {
         </Card>
         <Card className="border-slate-200">
           <CardContent className="p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-              Horímetro × horas
-            </p>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Não batem</p>
             <p className="mt-1 text-2xl font-bold text-amber-600">{total.divergentes}</p>
-            <p className="text-[10px] text-slate-500">com diferença a conferir</p>
+            <p className="text-[10px] text-slate-500">total × horas apontadas</p>
           </CardContent>
         </Card>
       </div>
@@ -199,21 +201,26 @@ export function Horimetro() {
                   <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
                     <tr>
                       <th className="px-3 py-2">Equipamento</th>
-                      <th className="px-3 py-2">Categoria</th>
-                      <th className="px-3 py-2">Penúltimo</th>
-                      <th className="px-3 py-2 text-right">Penúlt. horímetro</th>
-                      <th className="px-3 py-2">Último</th>
-                      <th className="px-3 py-2 text-right">Últ. horímetro</th>
-                      <th className="px-3 py-2 text-right">Andou</th>
+                      <th className="px-3 py-2 text-right">Penúltimo horímetro</th>
+                      <th className="px-3 py-2 text-right">Último horímetro</th>
+                      <th className="px-3 py-2 text-right font-bold text-blue-800">Total dos 2</th>
+                      <th className="px-3 py-2 text-right">Horas apontadas</th>
+                      <th className="px-3 py-2">Último lançamento</th>
                       <th className="px-3 py-2">Situação</th>
                       <th className="px-3 py-2"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {daPagina.map((r) => {
-                      const diverge = Math.abs(r.andou - r.horas) > 0.05
+                      // o total do intervalo deve casar com as horas apontadas
+                      const diverge = Math.abs(r.totalDoisUltimos - r.horasDoisUltimos) > 0.05
                       return (
-                        <tr key={r.equipamento.id} className="hover:bg-slate-50/70">
+                        <tr
+                          key={r.equipamento.id}
+                          className={
+                            diverge ? 'bg-amber-50/60 hover:bg-amber-50' : 'hover:bg-slate-50/70'
+                          }
+                        >
                           <td className="px-3 py-2 font-semibold text-slate-800">
                             {r.equipamento.identificacao}
                             {r.descartados > 0 && (
@@ -225,60 +232,62 @@ export function Horimetro() {
                               </span>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-slate-600">
-                            {r.equipamento.categoria || '—'}
-                          </td>
 
-                          {/* PENÚLTIMO */}
-                          <td className="whitespace-nowrap px-3 py-2 text-slate-600">
+                          {/* PENÚLTIMO horímetro */}
+                          <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-slate-500">
                             {r.penultimo ? (
                               <>
-                                <div className="font-medium">{formatDataBR(r.penultimo.data)}</div>
+                                <div>{formatHoras(r.penultimo.horimetroFinal)}</div>
                                 <div className="text-[10px] text-slate-400">
-                                  {r.penultimo.turno} · {r.penultimo.operador || '—'}
+                                  {formatDataBR(r.penultimo.data)}
                                 </div>
                               </>
                             ) : (
-                              <span className="text-slate-300">—</span>
+                              '—'
                             )}
                           </td>
-                          <td className="px-3 py-2 text-right tabular-nums text-slate-500">
-                            {r.penultimo ? formatHoras(r.penultimo.horimetroFinal) : '—'}
-                          </td>
 
-                          {/* ÚLTIMO */}
-                          <td className="whitespace-nowrap px-3 py-2">
+                          {/* ÚLTIMO horímetro */}
+                          <td className="whitespace-nowrap px-3 py-2 text-right font-bold tabular-nums text-blue-700">
                             {r.ultimo ? (
                               <>
-                                <div className="font-semibold text-slate-800">
+                                <div>{formatHoras(r.ultimo.horimetroFinal)}</div>
+                                <div className="text-[10px] font-normal text-slate-400">
                                   {formatDataBR(r.ultimo.data)}
                                 </div>
+                              </>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+
+                          {/* TOTAL DOS DOIS — o número da conferência diária */}
+                          <td
+                            className="whitespace-nowrap px-3 py-2 text-right text-base font-extrabold tabular-nums text-blue-900"
+                            title="Quanto o horímetro andou entre o penúltimo e o último lançamento"
+                          >
+                            {formatHoras(r.totalDoisUltimos)}
+                          </td>
+
+                          {/* horas apontadas nos dois */}
+                          <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-slate-600">
+                            {formatHoras(r.horasDoisUltimos)}
+                            {diverge && (
+                              <AlertTriangle className="ml-1 inline h-3 w-3 text-amber-600" />
+                            )}
+                          </td>
+
+                          <td className="whitespace-nowrap px-3 py-2 text-[11px] text-slate-600">
+                            {r.ultimo ? (
+                              <>
+                                <div className="font-medium">{formatDataBR(r.ultimo.data)}</div>
                                 <div className="text-[10px] text-slate-400">
                                   {r.ultimo.turno} · {r.ultimo.operador || '—'}
                                 </div>
                               </>
                             ) : (
-                              <span className="text-slate-300">—</span>
+                              '—'
                             )}
-                          </td>
-                          <td className="px-3 py-2 text-right font-bold tabular-nums text-blue-700">
-                            {r.ultimo ? formatHoras(r.ultimo.horimetroFinal) : '—'}
-                          </td>
-
-                          <td
-                            className={`px-3 py-2 text-right tabular-nums font-semibold ${
-                              diverge ? 'text-amber-700' : 'text-emerald-700'
-                            }`}
-                            title={
-                              diverge
-                                ? `O horímetro andou ${formatHoras(r.andou)} h e foram apontadas ${formatHoras(
-                                    r.horas,
-                                  )} h — diferença de ${formatHoras(r.andou - r.horas)} h`
-                                : 'Horímetro e horas apontadas batem'
-                            }
-                          >
-                            {formatHoras(r.andou)}
-                            {diverge && <AlertTriangle className="ml-1 inline h-3 w-3" />}
                           </td>
 
                           <td className="px-3 py-2">
@@ -305,6 +314,20 @@ export function Horimetro() {
                       )
                     })}
                   </tbody>
+                  <tfoot className="bg-blue-50 font-bold text-slate-800">
+                    <tr>
+                      <td className="px-3 py-2 text-[11px] uppercase" colSpan={3}>
+                        Total dos 2 últimos ({total.equipamentos} equipamento(s))
+                      </td>
+                      <td className="px-3 py-2 text-right text-base font-extrabold tabular-nums text-blue-900">
+                        {formatHoras(daPagina.reduce((s, r) => s + r.totalDoisUltimos, 0))}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {formatHoras(daPagina.reduce((s, r) => s + r.horasDoisUltimos, 0))}
+                      </td>
+                      <td colSpan={3}></td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
 
@@ -323,11 +346,12 @@ export function Horimetro() {
       </Card>
 
       <p className="text-[11px] leading-relaxed text-slate-500">
-        <b>Penúltimo</b> e <b>último</b> são os dois lançamentos válidos mais recentes pela ordem do{' '}
-        <b>horímetro</b> (a leitura final de um apontamento é a inicial do próximo), e não pela
-        ordem em que foram digitados ou importados. Isso impede que um registro carregado fora de
-        ordem apareça como o mais recente. Lançamentos inválidos — final menor que o inicial, mais
-        de 24 h ou leitura zerada — são ignorados aqui e marcados com ⚠ na coluna do equipamento.
+        <b>Total dos 2</b> é a diferença entre o último e o penúltimo horímetro lançado de cada
+        equipamento — serve para conferir o dia, não o mês. A coluna <b>Horas apontadas</b> mostra o
+        que foi lançado nesses mesmos dois apontamentos: quando os dois números não batem, a linha
+        fica em amarelo com ⚠. A ordem é pelo <b>horímetro</b> e não pela data de digitação, então
+        registro importado fora de ordem não aparece trocado. Lançamentos inválidos (final menor que
+        o inicial, mais de 24 h ou leitura zerada) são ignorados e sinalizados com ⚠ no equipamento.
       </p>
     </div>
   )

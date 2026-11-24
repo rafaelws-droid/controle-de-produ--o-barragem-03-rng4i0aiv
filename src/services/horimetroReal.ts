@@ -57,6 +57,15 @@ export interface ResumoHorimetro {
   ultimo: LeituraEquipamento | null
   /** quantos lançamentos foram descartados por serem inválidos/inconsistentes */
   descartados: number
+  /**
+   * TOTAL DO INTERVALO ENTRE OS DOIS ÚLTIMOS LANÇAMENTOS.
+   * É o número da CONFERÊNCIA DIÁRIA: quanto a máquina andou entre o penúltimo
+   * e o último apontamento. Antes esta coluna somava o mês inteiro, o que não
+   * servia para bater o dia.
+   */
+  totalDoisUltimos: number
+  /** horas apontadas só nesses dois lançamentos (o último normalmente basta) */
+  horasDoisUltimos: number
 }
 
 /** Todos os equipamentos reais (frota da Barragem 03). */
@@ -169,6 +178,21 @@ export function montarResumo(
       const diasSet = new Set(lista.map((x) => x.data))
       const diasSemApontamento = ultimo ? Math.max(0, diasEntre(dataAtual, referencia) - 1) : 999
 
+      // ---- TOTAL DA CONFERÊNCIA DIÁRIA ----
+      // Quanto o relógio andou entre o penúltimo e o último lançamento válido.
+      // Se só existe um lançamento no período, o total é a variação dele mesmo.
+      const totalDoisUltimos =
+        penultimo && ultimo
+          ? Math.round((ultimo.horimetroFinal - penultimo.horimetroFinal) * 10000) / 10000
+          : ultimo
+            ? Math.round((ultimo.horimetroFinal - ultimo.horimetroInicial) * 10000) / 10000
+            : 0
+
+      // horas apontadas nesses dois lançamentos (o que deveria bater com o total)
+      const horasDoisUltimos =
+        Math.round(((penultimo ? penultimo.horas : 0) + (ultimo ? ultimo.horas : 0)) * 10000) /
+        10000
+
       return {
         equipamento: eq,
         horimetroAnterior,
@@ -186,6 +210,8 @@ export function montarResumo(
         penultimo,
         ultimo,
         descartados: descartes.get(eq.id) ?? 0,
+        totalDoisUltimos,
+        horasDoisUltimos,
       }
     })
     .filter((r) => r.ultimo !== null)
