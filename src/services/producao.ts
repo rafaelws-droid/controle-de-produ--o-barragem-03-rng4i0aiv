@@ -100,29 +100,83 @@ export const lancamentosService = {
   },
 
   /**
-   * Último horímetro final do equipamento: vira o horímetro inicial do próximo
-   * lançamento, então o administrativo digita só o número novo.
+   * Último horímetro final do equipamento — vira o campo "horímetro inicial" do
+   * próximo lançamento.
+   *
+   * ──────────────────────────────────────────────────────────────────────────
+   * BUG CORRIGIDO EM 24/11 (o Rafael percebeu antes de mim)
+   * ──────────────────────────────────────────────────────────────────────────
+   * O sort era `-data,-created`: dentro do MESMO dia, a ordem era a da digitação.
+   * Se o 1º turno fosse lançado DEPOIS do 2º turno (acontece: quem fecha o turno
+   * da noite lança antes de quem fecha o do dia), o sistema pegava a leitura do
+   * 1º turno — que é a MENOR — como sendo a última do dia. Resultado: o horímetro
+   * inicial do próximo lançamento vinha para trás e a máquina "andava para trás".
+   *
+   * Caso real encontrado: ST 18 em 23/11 tinha 2º turno até 27.981,00 e 1º turno
+   * até 27.973,00; a tela sugeria 27.973,00 — 8 h a menos. O ST 44 em 22/11
+   * sugeria 5.667,00 quando o correto era 5.672,00.
+   *
+   * A ORDEM CERTA é:
+   *   1. data (mais recente primeiro)
+   *   2. ordem do TURNO (2º turno é o último do dia; o 1º vem antes)
+   *   3. horímetro final, como desempate
+   *
+   * O horímetro é sequencial por equipamento: o final de um apontamento é o
+   * inicial do próximo. Então, dentro do mesmo turno, o maior final é o último.
    */
   async ultimoHorimetro(equipamentoId: string): Promise<number | null> {
-    // 1) tenta o último lançamento: a leitura final vira a inicial do próximo
-    const res = await pb.collection('lancamentos').getList<Lancamento>(1, 1, {
+    // Busca os lançamentos do dia mais recente que tem registro deste equipamento.
+    const ultimoDia = await pb.collection('lancamentos').getList<Lancamento>(1, 1, {
       filter: `equipamento = "${equipamentoId}"`,
-      sort: '-data,-created',
+      sort: '-data',
     })
-    const ultimo = res.items[0]
-    if (ultimo) return ultimo.horimetro_final
 
-    // 2) equipamento ainda sem lançamento (primeiro uso): usa a leitura de
-    //    partida do cadastro. Sem isso o campo abria VAZIO e o operador podia
-    //    digitar qualquer número — erro que contamina todos os dias seguintes.
-    try {
-      const eq = await pb.collection('equipamentos').getOne<Equipamento>(equipamentoId)
-      const partida = Number((eq as Equipamento & { horimetro_partida?: number }).horimetro_partida)
-      if (Number.isFinite(partida) && partida > 0) return partida
-    } catch {
-      /* cadastro sem o campo: segue */
+    if (ultimoDia.items.length === 0) {
+      // equipamento ainda sem lançamento (primeiro uso): usa a leitura de
+      // partida do cadastro. Sem isso o campo abria VAZIO e o operador podia
+      // digitar qualquer número — erro que contamina todos os dias seguintes.
+      try {
+        const eq = await pb.collection('equipamentos').getOne<Equipamento>(equipamentoId)
+        const partida = Number(
+          (eq as Equipamento & { horimetro_partida?: number }).horimetro_partida,
+        )
+        if (Number.isFinite(partida) && partida > 0) return partida
+      } catch {
+        /* cadastro sem o campo: segue */
+      }
+      return null
     }
-    return null
+
+    const dia = ultimoDia.items[0].data
+
+    // Todos os lançamentos DESTE dia para este equipamento (normalmente 1 ou 2,
+    // um por turno — por isso não precisa paginar).
+    const doDia = await pb.collection('lancamentos').getFullList<Lancamento>({
+      filter: `equipamento = "${equipamentoId}" && data = "${dia}"`,
+      sort: 'turno,horimetro_final',
+    })
+
+    if (doDia.length === 0) return null
+
+    const ordemTurno = (t?: string) => {
+      const s = String(t ?? '')
+        .toUpperCase()
+        .trim()
+      // 3º TURNO é raro, mas se existir é o último do dia
+      if (s.startsWith('3')) return 3
+      if (s.startsWith('2')) return 2
+      if (s.startsWith('1')) return 1
+      return 0
+    }
+
+    const ultimo = doDia.reduce((melhor, atual) => {
+      const d = ordemTurno(atual.turno) - ordemTurno(melhor.turno)
+      if (d !== 0) return d > 0 ? atual : melhor
+      // mesmo turno: o maior horímetro final é o mais recente
+      return Number(atual.horimetro_final) > Number(melhor.horimetro_final) ? atual : melhor
+    }, doDia[0])
+
+    return ultimo.horimetro_final
   },
 
   create: (data: Partial<Lancamento>) =>
