@@ -27,6 +27,8 @@ export interface ResumoHorimetro {
   /** maior horímetro encontrado no período */
   horimetroAtual: number
   dataAtual: string
+  /** diferença real do relógio: atual − anterior (pode ser maior que as horas) */
+  andou: number
   /** horas somadas no período */
   horas: number
   /** horas por dia com apontamento */
@@ -130,6 +132,14 @@ export function montarResumo(
       const primeira = leituras[0]
       const horimetroAnterior = primeira ? primeira.horimetroInicial : 0
       const dataAnterior = primeira?.data ?? ''
+      /**
+       * "Andou" é a diferença REAL do relógio da máquina (atual − anterior).
+       * Não é a soma das horas: se a planilha tiver um buraco de leitura (o
+       * horímetro andou entre um dia e outro sem apontamento), a diferença fica
+       * maior que as horas somadas — e é justamente isso que precisa aparecer,
+       * para o buraco não passar despercebido.
+       */
+      const andou = Math.round((horimetroAtual - horimetroAnterior) * 10000) / 10000
       const diasSemApontamento = ultima
         ? Math.max(0, diasEntre(ultima.data, referencia) - 1)
         : diasEntre(referencia, referencia) + 999 // sem leitura nenhuma no periodo
@@ -138,6 +148,7 @@ export function montarResumo(
         equipamento: eq,
         horimetroAnterior,
         dataAnterior,
+        andou,
         horimetroAtual,
         dataAtual,
         horas,

@@ -183,8 +183,22 @@ export function Horimetro() {
                       <td className="px-3 py-2 text-right font-bold tabular-nums text-blue-700">
                         {formatHoras(r.horimetroAtual)}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums font-semibold text-emerald-700">
-                        {formatHoras(r.horas)}
+                      <td
+                        className={`px-3 py-2 text-right tabular-nums font-semibold ${
+                          Math.abs(r.andou - r.horas) > 0.05 ? 'text-amber-700' : 'text-emerald-700'
+                        }`}
+                        title={
+                          Math.abs(r.andou - r.horas) > 0.05
+                            ? `O horímetro andou ${formatHoras(r.andou)} h mas foram apontadas ${formatHoras(
+                                r.horas,
+                              )} h — diferença de ${formatHoras(r.andou - r.horas)} h`
+                            : 'Horímetro e horas apontadas batem'
+                        }
+                      >
+                        {formatHoras(r.andou)}
+                        {Math.abs(r.andou - r.horas) > 0.05 && (
+                          <AlertTriangle className="ml-1 inline h-3 w-3" />
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-slate-600">
                         {r.dataAtual ? formatDataBR(r.dataAtual) : '—'}
