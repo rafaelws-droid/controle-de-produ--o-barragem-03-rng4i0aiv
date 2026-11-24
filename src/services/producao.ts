@@ -179,6 +179,81 @@ export const lancamentosService = {
     return ultimo.horimetro_final
   },
 
+  /**
+   * Igual ao `ultimoHorimetro`, mas devolve o CONTEXTO junto — a tela usa isso
+   * para avisar o lançador quando a sugestão pode estar incompleta.
+   *
+   * O caso é este: o equipamento trabalhou no 1º turno e o 2º turno (o último do
+   * dia) ainda não foi lançado. O valor sugerido vem do 1º turno; quando o 2º for
+   * lançado, a leitura será maior. Sem o aviso, o lançador confia no número e
+   * pode gravar um horímetro inicial que já nasce atrasado.
+   */
+  async sugestaoHorimetro(equipamentoId: string): Promise<{
+    valor: number | null
+    data: string | null
+    turno: string | null
+    /** true quando o último lançamento do dia é do 1º turno e o 2º não existe */
+    faltaSegundoTurno: boolean
+  }> {
+    const ultimoDia = await pb.collection('lancamentos').getList<Lancamento>(1, 1, {
+      filter: `equipamento = "${equipamentoId}"`,
+      sort: '-data',
+    })
+
+    if (ultimoDia.items.length === 0) {
+      try {
+        const eq = await pb.collection('equipamentos').getOne<Equipamento>(equipamentoId)
+        const partida = Number(
+          (eq as Equipamento & { horimetro_partida?: number }).horimetro_partida,
+        )
+        return {
+          valor: Number.isFinite(partida) && partida > 0 ? partida : null,
+          data: null,
+          turno: null,
+          faltaSegundoTurno: false,
+        }
+      } catch {
+        return { valor: null, data: null, turno: null, faltaSegundoTurno: false }
+      }
+    }
+
+    const dia = ultimoDia.items[0].data
+    const doDia = await pb.collection('lancamentos').getFullList<Lancamento>({
+      filter: `equipamento = "${equipamentoId}" && data = "${dia}"`,
+      sort: 'turno,horimetro_final',
+    })
+    if (doDia.length === 0) {
+      return { valor: null, data: null, turno: null, faltaSegundoTurno: false }
+    }
+
+    const ordemTurno = (t?: string) => {
+      const s = String(t ?? '')
+        .toUpperCase()
+        .trim()
+      if (s.startsWith('3')) return 3
+      if (s.startsWith('2')) return 2
+      if (s.startsWith('1')) return 1
+      return 0
+    }
+
+    const ultimo = doDia.reduce((melhor, atual) => {
+      const d = ordemTurno(atual.turno) - ordemTurno(melhor.turno)
+      if (d !== 0) return d > 0 ? atual : melhor
+      return Number(atual.horimetro_final) > Number(melhor.horimetro_final) ? atual : melhor
+    }, doDia[0])
+
+    const turnosNoDia = new Set(doDia.map((x) => ordemTurno(x.turno)))
+    // só avisa quando o último do dia é do 1º turno E o 2º não foi lançado
+    const faltaSegundoTurno = ordemTurno(ultimo.turno) === 1 && !turnosNoDia.has(2)
+
+    return {
+      valor: ultimo.horimetro_final,
+      data: dia,
+      turno: ultimo.turno ?? null,
+      faltaSegundoTurno,
+    }
+  },
+
   create: (data: Partial<Lancamento>) =>
     pb.collection('lancamentos').create<Lancamento>(data, { expand: EXPAND }),
 

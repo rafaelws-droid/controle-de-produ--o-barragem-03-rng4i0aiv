@@ -14,6 +14,7 @@ import {
   Pencil,
   Settings2,
   Trash2,
+  AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,7 +34,7 @@ import {
   operadoresService,
   turnosService,
 } from '@/services/producao'
-import { formatHoras } from '@/lib/exportUtils'
+import { formatHoras, formatDataBR } from '@/lib/exportUtils'
 import { hojeISO } from '@/lib/utils'
 import {
   FLAGS,
@@ -65,6 +66,16 @@ export default function NovoLancamento() {
   const [erroCarga, setErroCarga] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  /**
+   * Aviso do turno: preenchido quando o último lançamento do dia é do 1º turno e
+   * o 2º (o último do dia) ainda não foi lançado. A sugestão vem de um valor
+   * REAL, mas vai aumentar — o lançador precisa saber antes de confiar nele.
+   */
+  const [avisoTurno, setAvisoTurno] = useState<{
+    valor: number | null
+    data: string | null
+    turno: string | null
+  } | null>(null)
 
   const [data, setData] = useState(hojeISO())
   const [frenteId, setFrenteId] = useState(params.get('frente') || '')
@@ -143,18 +154,33 @@ export default function NovoLancamento() {
     let ativo = true
     // Na edicao o horimetro ja vem do registro: nao buscar o ultimo do equipamento.
     if (editando) return
+    setAvisoTurno(null)
     if (!equipamentoId) {
       setHi('')
       return
     }
     void lancamentosService
-      .ultimoHorimetro(equipamentoId)
-      .then((valor) => {
+      .sugestaoHorimetro(equipamentoId)
+      .then((s) => {
         if (!ativo) return
-        setHi(valor === null ? '' : String(valor))
+        setHi(s.valor === null ? '' : String(s.valor))
+        // Aviso: o último lançamento do dia é do 1º turno e o 2º ainda não existe.
+        // O valor sugerido é real, mas vai aumentar quando o 2º turno for lançado.
+        setAvisoTurno(
+          s.faltaSegundoTurno
+            ? {
+                valor: s.valor,
+                data: s.data,
+                turno: s.turno,
+              }
+            : null,
+        )
       })
       .catch(() => {
-        if (ativo) setHi('')
+        if (ativo) {
+          setHi('')
+          setAvisoTurno(null)
+        }
       })
     return () => {
       ativo = false
@@ -514,8 +540,24 @@ export default function NovoLancamento() {
                   inputMode="decimal"
                   placeholder="0.0"
                   value={hi}
-                  onChange={(e) => setHi(e.target.value)}
+                  onChange={(e) => {
+                    setHi(e.target.value)
+                    // o lançador mexeu no valor: o aviso deixa de fazer sentido
+                    setAvisoTurno(null)
+                  }}
+                  className={avisoTurno ? 'border-amber-400 bg-amber-50' : undefined}
                 />
+                {avisoTurno && (
+                  <div className="mt-1 flex items-start gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-[11px] leading-snug text-amber-900">
+                    <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                    <span>
+                      Este valor é do <b>{avisoTurno.turno}</b>
+                      {avisoTurno.data ? ` de ${formatDataBR(avisoTurno.data)}` : ''}. O{' '}
+                      <b>2º turno</b> ainda não foi lançado — quando for, a leitura será{' '}
+                      <b>maior</b>. Confirme com o operador antes de gravar.
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="hf" className="text-xs font-semibold text-slate-700">
