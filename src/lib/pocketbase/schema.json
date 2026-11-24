@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-24T01:28:27.135Z",
+  "generatedAt": "2026-11-24T17:28:28.284Z",
   "collections": [
     {
       "name": "users",
@@ -612,48 +612,6 @@
       ],
       "indexes": [
         "CREATE UNIQUE INDEX idx_horimetro_relatorios_semana ON horimetro_relatorios (semana_fim)"
-      ]
-    },
-    {
-      "name": "planos_manutencao",
-      "type": "base",
-      "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
-        "create": "@request.auth.papel = 'GESTOR'",
-        "update": "@request.auth.papel = 'GESTOR'",
-        "delete": "@request.auth.papel = 'GESTOR'"
-      },
-      "fields": [
-        {
-          "name": "familia",
-          "type": "select",
-          "required": true,
-          "system": false,
-          "selectValues": ["CAMINHÃO", "PÁ CARREGADEIRA", "ESCAVADEIRA", "ROLO COMPACTADOR"]
-        },
-        {
-          "name": "intervalo",
-          "type": "number",
-          "required": true,
-          "system": false
-        },
-        {
-          "name": "item",
-          "type": "text",
-          "required": true,
-          "system": false
-        },
-        {
-          "name": "ordem",
-          "type": "number",
-          "required": false,
-          "system": false
-        }
-      ],
-      "indexes": [
-        "CREATE UNIQUE INDEX idx_plano_familia_intervalo_item ON planos_manutencao (familia, intervalo, item)",
-        "CREATE INDEX idx_plano_familia_intervalo ON planos_manutencao (familia, intervalo)"
       ]
     },
     {
