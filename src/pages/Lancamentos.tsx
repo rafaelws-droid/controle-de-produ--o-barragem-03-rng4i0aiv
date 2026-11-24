@@ -355,15 +355,18 @@ export default function Lancamentos() {
                   <td className="whitespace-nowrap px-3 py-2">
                     {ehGestor ? (
                       <div className="flex items-center gap-1">
+                        {/* Editar: botão com texto, não só ícone — é a correção
+                            manual que o gestor usa quando um lançamento está errado. */}
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           asChild
-                          title="Editar lançamento"
-                          className="h-7 w-7 p-0 text-slate-500 hover:text-blue-600"
+                          title="Corrigir este lançamento"
+                          className="h-7 gap-1 border-blue-300 px-2 text-[11px] font-semibold text-blue-700 hover:bg-blue-50"
                         >
                           <Link to={`/lancamento/${l.id}`}>
-                            <Pencil className="h-3.5 w-3.5" />
+                            <Pencil className="h-3 w-3" />
+                            Editar
                           </Link>
                         </Button>
                         <Button
