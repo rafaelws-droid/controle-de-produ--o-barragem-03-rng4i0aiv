@@ -188,10 +188,14 @@ export function montarResumo(
             ? Math.round((ultimo.horimetroFinal - ultimo.horimetroInicial) * 10000) / 10000
             : 0
 
-      // horas apontadas nesses dois lançamentos (o que deveria bater com o total)
-      const horasDoisUltimos =
-        Math.round(((penultimo ? penultimo.horas : 0) + (ultimo ? ultimo.horas : 0)) * 10000) /
-        10000
+      /**
+       * Horas do ÚLTIMO lançamento — é com isso que o total do intervalo deve
+       * bater. O intervalo vai do final do penúltimo até o final do último, que
+       * é exatamente o que o último apontamento registrou. Somar os dois daria o
+       * dobro e a comparação não faria sentido: o penúltimo já foi conferido no
+       * dia anterior.
+       */
+      const horasDoisUltimos = ultimo ? Math.round(ultimo.horas * 10000) / 10000 : 0
 
       return {
         equipamento: eq,

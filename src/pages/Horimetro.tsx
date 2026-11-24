@@ -204,7 +204,7 @@ export function Horimetro() {
                       <th className="px-3 py-2 text-right">Penúltimo horímetro</th>
                       <th className="px-3 py-2 text-right">Último horímetro</th>
                       <th className="px-3 py-2 text-right font-bold text-blue-800">Total dos 2</th>
-                      <th className="px-3 py-2 text-right">Horas apontadas</th>
+                      <th className="px-3 py-2 text-right">Horas do último</th>
                       <th className="px-3 py-2">Último lançamento</th>
                       <th className="px-3 py-2">Situação</th>
                       <th className="px-3 py-2"></th>
@@ -347,11 +347,12 @@ export function Horimetro() {
 
       <p className="text-[11px] leading-relaxed text-slate-500">
         <b>Total dos 2</b> é a diferença entre o último e o penúltimo horímetro lançado de cada
-        equipamento — serve para conferir o dia, não o mês. A coluna <b>Horas apontadas</b> mostra o
-        que foi lançado nesses mesmos dois apontamentos: quando os dois números não batem, a linha
-        fica em amarelo com ⚠. A ordem é pelo <b>horímetro</b> e não pela data de digitação, então
-        registro importado fora de ordem não aparece trocado. Lançamentos inválidos (final menor que
-        o inicial, mais de 24 h ou leitura zerada) são ignorados e sinalizados com ⚠ no equipamento.
+        equipamento — o intervalo do dia, não o mês. A coluna <b>Horas do último</b> mostra o que
+        foi apontado nesse último lançamento: é com ela que o total deve bater. Quando não bate, a
+        linha fica em amarelo com ⚠. A ordem é pelo <b>horímetro</b> e não pela data de digitação,
+        então registro importado fora de ordem não aparece trocado. Lançamentos inválidos (final
+        menor que o inicial, mais de 24 h ou leitura zerada) são ignorados e sinalizados com ⚠ no
+        equipamento.
       </p>
     </div>
   )
