@@ -121,6 +121,43 @@ export default function Equipamentos() {
     }
   }
 
+  /**
+   * Horímetro de partida: a leitura da máquina no primeiro dia de uso.
+   * Serve para equipamento que ainda NÃO TEM lançamento — sem isso o campo
+   * "horímetro inicial" abriria vazio e o operador digitaria qualquer número,
+   * contaminando todos os dias seguintes.
+   */
+  const editarPartida = async (eq: Equipamento) => {
+    const atual = eq.horimetro_partida ? String(eq.horimetro_partida) : ''
+    const valor = window.prompt(
+      `Horímetro de partida de ${eq.identificacao}\n\nÉ a leitura da máquina no primeiro dia de uso. Só é usada enquanto o equipamento não tiver nenhum lançamento.`,
+      atual,
+    )
+    if (valor === null) return
+    const num = Number(valor.replace(',', '.'))
+    if (valor.trim() !== '' && (!Number.isFinite(num) || num < 0)) {
+      toast({
+        title: 'Valor inválido',
+        description: 'Informe a leitura do horímetro.',
+        variant: 'destructive',
+      })
+      return
+    }
+    try {
+      await equipamentosService.update(eq.id, {
+        horimetro_partida: valor.trim() === '' ? 0 : num,
+      })
+      await carregar()
+      toast({
+        title: 'Horímetro de partida salvo',
+        description: `${eq.identificacao}: ${valor.trim() === '' ? 'sem leitura' : num}`,
+      })
+    } catch (e) {
+      console.error(e)
+      toast({ title: 'Erro ao salvar', variant: 'destructive' })
+    }
+  }
+
   const excluirEquipamento = async (eq: Equipamento) => {
     const ok = window.confirm(`Excluir o equipamento ${eq.identificacao}?`)
     if (!ok) return
@@ -307,18 +344,39 @@ export default function Equipamentos() {
                       {eq.identificacao}
                       {eq.descricao ? ` — ${eq.descricao}` : ''}
                     </p>
-                    <p className="text-[11px] text-slate-500">{eq.categoria || 'OUTRO'}</p>
+                    <p className="text-[11px] text-slate-500">
+                      {eq.categoria || 'OUTRO'}
+                      {eq.horimetro_partida ? (
+                        <span className="ml-1.5 font-semibold text-blue-700">
+                          · partida {formatHoras(eq.horimetro_partida)}
+                        </span>
+                      ) : (
+                        <span className="ml-1.5 text-amber-600">· sem horímetro de partida</span>
+                      )}
+                    </p>
                   </div>
                   {ehGestor && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => excluirEquipamento(eq)}
-                      className="h-7 w-7 shrink-0 p-0 text-slate-400 hover:text-red-600"
-                      title="Excluir equipamento"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => editarPartida(eq)}
+                        className="h-7 gap-1 px-2 text-[10px] font-semibold text-blue-600 hover:bg-blue-50"
+                        title="Definir o horímetro de partida"
+                      >
+                        <Gauge className="h-3 w-3" />
+                        Partida
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => excluirEquipamento(eq)}
+                        className="h-7 w-7 p-0 text-slate-400 hover:text-red-600"
+                        title="Excluir equipamento"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   )}
                 </div>
               ))}

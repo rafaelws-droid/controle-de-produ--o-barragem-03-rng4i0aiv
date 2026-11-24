@@ -104,12 +104,25 @@ export const lancamentosService = {
    * lançamento, então o administrativo digita só o número novo.
    */
   async ultimoHorimetro(equipamentoId: string): Promise<number | null> {
+    // 1) tenta o último lançamento: a leitura final vira a inicial do próximo
     const res = await pb.collection('lancamentos').getList<Lancamento>(1, 1, {
       filter: `equipamento = "${equipamentoId}"`,
       sort: '-data,-created',
     })
     const ultimo = res.items[0]
-    return ultimo ? ultimo.horimetro_final : null
+    if (ultimo) return ultimo.horimetro_final
+
+    // 2) equipamento ainda sem lançamento (primeiro uso): usa a leitura de
+    //    partida do cadastro. Sem isso o campo abria VAZIO e o operador podia
+    //    digitar qualquer número — erro que contamina todos os dias seguintes.
+    try {
+      const eq = await pb.collection('equipamentos').getOne<Equipamento>(equipamentoId)
+      const partida = Number((eq as Equipamento & { horimetro_partida?: number }).horimetro_partida)
+      if (Number.isFinite(partida) && partida > 0) return partida
+    } catch {
+      /* cadastro sem o campo: segue */
+    }
+    return null
   },
 
   create: (data: Partial<Lancamento>) =>

@@ -31,6 +31,12 @@ export interface Equipamento {
   descricao?: string
   categoria?: Categoria
   ativo?: boolean
+  /**
+   * Leitura do horímetro na partida, para equipamento que ainda não tem
+   * lançamento. É o valor sugerido como "horímetro inicial" no primeiro uso —
+   * sem ele o campo abre vazio e o operador pode digitar qualquer número.
+   */
+  horimetro_partida?: number
 }
 
 export interface Operador {
