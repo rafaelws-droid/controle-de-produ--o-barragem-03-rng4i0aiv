@@ -70,11 +70,27 @@ export default function Index() {
   const [deCustom, setDeCustom] = useState(() => cicloAtual().de)
   const [ateCustom, setAteCustom] = useState(() => hojeISO())
 
+  /**
+   * OTIMIZAÇÃO (24/11): antes esta tela baixava a coleção INTEIRA de lançamentos
+   * para somar no navegador — com dois ciclos eram 1.800 registros, vários
+   * segundos no celular. Agora busca os últimos 13 meses (cobre "Tudo" e o ciclo
+   * corrente com folga) e o servidor faz o filtro usando índice em `data`.
+   */
   const carregar = async () => {
     try {
       setCarregando(true)
       setErro(false)
-      const [ls, fs] = await Promise.all([lancamentosService.getAll(), frentesService.getAll()])
+      const hoje = hojeISO()
+      const [a, m, d] = hoje.split('-').map(Number)
+      const inicio = new Date(a, m - 1 - 13, d)
+      const deBusca = `${inicio.getFullYear()}-${String(inicio.getMonth() + 1).padStart(2, '0')}-${String(
+        inicio.getDate(),
+      ).padStart(2, '0')}`
+
+      const [ls, fs] = await Promise.all([
+        lancamentosService.getPeriodo(deBusca, hoje),
+        frentesService.getAll(),
+      ])
       setLancamentos(ls)
       setFrentes(fs)
     } catch (e) {
@@ -87,6 +103,7 @@ export default function Index() {
 
   useEffect(() => {
     void carregar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const periodo = useMemo(() => {

@@ -59,8 +59,10 @@ export default function Relatorio() {
     try {
       setCarregando(true)
       setErroCarga(false)
+      // OTIMIZAÇÃO (24/11): busca só o período escolhido no servidor.
+      // O período inicial é definido depois, no primeiro carregamento.
       const [ls, fs, es, os] = await Promise.all([
-        lancamentosService.getAll(),
+        lancamentosService.getPeriodo(de || '2020-01-01', ate || hojeISO()),
         frentesService.getAll(),
         equipamentosService.getAll(),
         operadoresService.getAll(),

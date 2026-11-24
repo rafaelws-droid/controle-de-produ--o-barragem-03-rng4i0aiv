@@ -114,12 +114,20 @@ export default function Dashboard() {
   const [operador, setOperador] = useState('')
   const [mostrarFiltros, setMostrarFiltros] = useState(true)
 
+  /**
+   * OTIMIZAÇÃO (24/11): o Dashboard baixava TODOS os lançamentos para filtrar no
+   * navegador. Mesmo com o filtro de período na tela, a consulta trazia a coleção
+   * inteira. Agora o período vai para o servidor (índice em `data`) e só os
+   * cadastros — que são pequenos e mudam pouco — continuam vindo completos.
+   */
   const carregar = async () => {
     try {
       setCarregando(true)
       setErro(false)
+      const deBusca = de || '2020-01-01'
+      const ateBusca = ate || hojeISO()
       const [ls, es, fs, os] = await Promise.all([
-        lancamentosService.getAll(),
+        lancamentosService.getPeriodo(deBusca, ateBusca),
         equipamentosService.getAll(),
         frentesService.getAll(),
         operadoresService.getAll(),
@@ -136,9 +144,11 @@ export default function Dashboard() {
     }
   }
 
+  // recarrega quando o período muda (a consulta vai ao servidor)
   useEffect(() => {
     void carregar()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [de, ate])
 
   const invalido = !!de && !!ate && de > ate
 
