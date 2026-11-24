@@ -1,16 +1,21 @@
 /**
- * Horímetro — lê os equipamentos e as leituras do Controle de Produção.
+ * Horímetro — mostra, de cada equipamento, o PENÚLTIMO e o ÚLTIMO lançamento
+ * válido de horímetro, na ordem verdadeira da máquina.
  *
- * Antes esta tela usava um cadastro separado (horimetro_equipamentos) que tinha
- * máquinas de exemplo. Agora mostra a frota real, com o horímetro que vem dos
- * lançamentos, e permite lançar uma leitura que também alimenta o controle.
+ * POR QUE ORDENAR PELO HORÍMETRO E NÃO PELA DATA/CARGA:
+ * a planilha é preenchida em abas por frente, e o mesmo equipamento aparece em
+ * mais de uma aba. Quando os dados são importados, os registros de um dia podem
+ * ser gravados depois dos de outro dia — e ordenar por data de gravação devolvia
+ * como "último" um apontamento antigo. O horímetro é sequencial (o final de um
+ * é o inicial do próximo), então ele é a única ordenação confiável.
+ *
+ * A tela descarta lançamento inválido (final menor que inicial, mais de 24 h,
+ * leitura zerada) e informa quantos foram descartados.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { LoadError } from '@/components/LoadError'
-import { useToast } from '@/hooks/use-toast'
 import { Gauge, Truck, RefreshCw, ArrowUpRight, AlertTriangle, Wrench } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { formatDataBR, formatHoras } from '@/lib/exportUtils'
@@ -21,6 +26,7 @@ import {
   type ResumoHorimetro,
 } from '@/services/horimetroReal'
 import { hojeISO } from '@/lib/exportHorimetros'
+import { Paginacao, POR_PAGINA } from '@/components/Paginacao'
 
 function diasAtras(n: number): string {
   const h = hojeISO()
@@ -32,14 +38,14 @@ function diasAtras(n: number): string {
 }
 
 export function Horimetro() {
-  const { toast } = useToast()
   const [resumos, setResumos] = useState<ResumoHorimetro[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
-  // Janela padrão: 120 dias, que cobre os dois ciclos carregados.
+  // Janela padrão: 120 dias, que cobre os ciclos carregados.
   const [de, setDe] = useState(diasAtras(120))
   const [ate, setAte] = useState(hojeISO())
+  const [pagina, setPagina] = useState(1)
 
   async function carregar() {
     setCarregando(true)
@@ -59,11 +65,24 @@ export function Horimetro() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [de, ate])
 
+  useEffect(() => {
+    setPagina(1)
+  }, [de, ate])
+
+  const totalPaginas = Math.max(1, Math.ceil(resumos.length / POR_PAGINA))
+  const paginaAtual = Math.min(pagina, totalPaginas)
+  const daPagina = useMemo(
+    () => resumos.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA),
+    [resumos, paginaAtual],
+  )
+
   const total = useMemo(
     () => ({
       horas: resumos.reduce((s, r) => s + r.horas, 0),
       equipamentos: resumos.length,
       semApontamento: resumos.filter((r) => r.diasSemApontamento >= 3).length,
+      descartados: resumos.reduce((s, r) => s + r.descartados, 0),
+      divergentes: resumos.filter((r) => r.ultimo && Math.abs(r.andou - r.horas) > 0.05).length,
     }),
     [resumos],
   )
@@ -84,9 +103,9 @@ export function Horimetro() {
             <Gauge className="h-7 w-7 text-blue-600" /> Horímetro
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Leitura de cada equipamento da frota, vinda dos lançamentos do Controle de Produção: do{' '}
-            <b>horímetro anterior</b> (primeira leitura do período) ao <b>horímetro atual</b>
-            (última leitura).
+            De cada equipamento: o <b>penúltimo</b> e o <b>último</b> lançamento válido. A ordem é
+            pelo horímetro da máquina, não pela data de digitação — assim registro importado fora de
+            ordem não aparece trocado.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -110,7 +129,7 @@ export function Horimetro() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-4">
         <Card className="border-slate-200">
           <CardContent className="p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -135,12 +154,32 @@ export function Horimetro() {
             <p className="mt-1 text-2xl font-bold text-orange-600">{total.semApontamento}</p>
           </CardContent>
         </Card>
+        <Card className="border-slate-200">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Horímetro × horas
+            </p>
+            <p className="mt-1 text-2xl font-bold text-amber-600">{total.divergentes}</p>
+            <p className="text-[10px] text-slate-500">com diferença a conferir</p>
+          </CardContent>
+        </Card>
       </div>
+
+      {total.descartados > 0 && (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-[12.5px] text-amber-900">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            <b>{total.descartados} lançamento(s)</b> foram ignorados por serem inválidos (horímetro
+            final menor que o inicial, mais de 24 h ou leitura zerada). Eles continuam em
+            Lançamentos para conferência.
+          </span>
+        </div>
+      )}
 
       <Card className="border-slate-200">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Truck className="h-4 w-4 text-blue-600" /> Frota — horímetro atual
+            <Truck className="h-4 w-4 text-blue-600" /> Frota — penúltimo e último lançamento
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             {formatDataBR(de)} a {formatDataBR(ate)} · {total.equipamentos} equipamento(s)
@@ -154,95 +193,141 @@ export function Horimetro() {
               Nenhum equipamento com apontamento no período escolhido.
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-md border">
-              <table className="w-full min-w-[760px] text-left text-xs">
-                <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
-                  <tr>
-                    <th className="px-3 py-2">Equipamento</th>
-                    <th className="px-3 py-2">Categoria</th>
-                    <th className="px-3 py-2 text-right">Horímetro anterior</th>
-                    <th className="px-3 py-2 text-right">Horímetro atual</th>
-                    <th className="px-3 py-2 text-right">Andou</th>
-                    <th className="px-3 py-2">Última leitura</th>
-                    <th className="px-3 py-2 text-right">Horas no período</th>
-                    <th className="px-3 py-2 text-right">h/dia</th>
-                    <th className="px-3 py-2">Situação</th>
-                    <th className="px-3 py-2"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {resumos.map((r) => (
-                    <tr key={r.equipamento.id} className="hover:bg-slate-50/70">
-                      <td className="px-3 py-2 font-semibold text-slate-800">
-                        {r.equipamento.identificacao}
-                      </td>
-                      <td className="px-3 py-2 text-slate-600">{r.equipamento.categoria || '—'}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-slate-500">
-                        {formatHoras(r.horimetroAnterior)}
-                      </td>
-                      <td className="px-3 py-2 text-right font-bold tabular-nums text-blue-700">
-                        {formatHoras(r.horimetroAtual)}
-                      </td>
-                      <td
-                        className={`px-3 py-2 text-right tabular-nums font-semibold ${
-                          Math.abs(r.andou - r.horas) > 0.05 ? 'text-amber-700' : 'text-emerald-700'
-                        }`}
-                        title={
-                          Math.abs(r.andou - r.horas) > 0.05
-                            ? `O horímetro andou ${formatHoras(r.andou)} h mas foram apontadas ${formatHoras(
-                                r.horas,
-                              )} h — diferença de ${formatHoras(r.andou - r.horas)} h`
-                            : 'Horímetro e horas apontadas batem'
-                        }
-                      >
-                        {formatHoras(r.andou)}
-                        {Math.abs(r.andou - r.horas) > 0.05 && (
-                          <AlertTriangle className="ml-1 inline h-3 w-3" />
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-slate-600">
-                        {r.dataAtual ? formatDataBR(r.dataAtual) : '—'}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-slate-700">
-                        {formatHoras(r.horas)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-slate-600">
-                        {formatHoras(r.horasPorDia)}
-                      </td>
-                      <td className="px-3 py-2">
-                        {r.diasSemApontamento >= 3 ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-orange-600">
-                            <AlertTriangle className="h-3 w-3" /> {r.diasSemApontamento} dias parado
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700">
-                            <Wrench className="h-3 w-3" /> em operação
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2">
-                        <Link
-                          to={`/relatorio?de=${de}&ate=${ate}&equipamento=${r.equipamento.id}`}
-                          className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 hover:underline"
-                        >
-                          Ver <ArrowUpRight className="h-3 w-3" />
-                        </Link>
-                      </td>
+            <>
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full min-w-[1000px] text-left text-xs">
+                  <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2">Equipamento</th>
+                      <th className="px-3 py-2">Categoria</th>
+                      <th className="px-3 py-2">Penúltimo</th>
+                      <th className="px-3 py-2 text-right">Penúlt. horímetro</th>
+                      <th className="px-3 py-2">Último</th>
+                      <th className="px-3 py-2 text-right">Últ. horímetro</th>
+                      <th className="px-3 py-2 text-right">Andou</th>
+                      <th className="px-3 py-2">Situação</th>
+                      <th className="px-3 py-2"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {daPagina.map((r) => {
+                      const diverge = Math.abs(r.andou - r.horas) > 0.05
+                      return (
+                        <tr key={r.equipamento.id} className="hover:bg-slate-50/70">
+                          <td className="px-3 py-2 font-semibold text-slate-800">
+                            {r.equipamento.identificacao}
+                            {r.descartados > 0 && (
+                              <span
+                                className="ml-1 text-[10px] font-normal text-amber-600"
+                                title={`${r.descartados} lançamento(s) inválido(s) ignorado(s)`}
+                              >
+                                ⚠{r.descartados}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-slate-600">
+                            {r.equipamento.categoria || '—'}
+                          </td>
+
+                          {/* PENÚLTIMO */}
+                          <td className="whitespace-nowrap px-3 py-2 text-slate-600">
+                            {r.penultimo ? (
+                              <>
+                                <div className="font-medium">{formatDataBR(r.penultimo.data)}</div>
+                                <div className="text-[10px] text-slate-400">
+                                  {r.penultimo.turno} · {r.penultimo.operador || '—'}
+                                </div>
+                              </>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums text-slate-500">
+                            {r.penultimo ? formatHoras(r.penultimo.horimetroFinal) : '—'}
+                          </td>
+
+                          {/* ÚLTIMO */}
+                          <td className="whitespace-nowrap px-3 py-2">
+                            {r.ultimo ? (
+                              <>
+                                <div className="font-semibold text-slate-800">
+                                  {formatDataBR(r.ultimo.data)}
+                                </div>
+                                <div className="text-[10px] text-slate-400">
+                                  {r.ultimo.turno} · {r.ultimo.operador || '—'}
+                                </div>
+                              </>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right font-bold tabular-nums text-blue-700">
+                            {r.ultimo ? formatHoras(r.ultimo.horimetroFinal) : '—'}
+                          </td>
+
+                          <td
+                            className={`px-3 py-2 text-right tabular-nums font-semibold ${
+                              diverge ? 'text-amber-700' : 'text-emerald-700'
+                            }`}
+                            title={
+                              diverge
+                                ? `O horímetro andou ${formatHoras(r.andou)} h e foram apontadas ${formatHoras(
+                                    r.horas,
+                                  )} h — diferença de ${formatHoras(r.andou - r.horas)} h`
+                                : 'Horímetro e horas apontadas batem'
+                            }
+                          >
+                            {formatHoras(r.andou)}
+                            {diverge && <AlertTriangle className="ml-1 inline h-3 w-3" />}
+                          </td>
+
+                          <td className="px-3 py-2">
+                            {r.diasSemApontamento >= 3 ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-orange-600">
+                                <AlertTriangle className="h-3 w-3" /> {r.diasSemApontamento} dias
+                                parado
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700">
+                                <Wrench className="h-3 w-3" /> em operação
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            <Link
+                              to={`/relatorio?de=${de}&ate=${ate}&equipamento=${r.equipamento.id}`}
+                              className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 hover:underline"
+                            >
+                              Ver <ArrowUpRight className="h-3 w-3" />
+                            </Link>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-3">
+                <Paginacao
+                  pagina={paginaAtual}
+                  totalPaginas={totalPaginas}
+                  totalItens={resumos.length}
+                  porPagina={POR_PAGINA}
+                  onMudar={setPagina}
+                />
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
 
       <p className="text-[11px] leading-relaxed text-slate-500">
-        <b>Horímetro anterior</b> é a primeira leitura do período e <b>horímetro atual</b> é a
-        última: a diferença entre os dois é o que a máquina andou. A coluna <b>Andou</b> mostra esse
-        total, que é o mesmo das horas apontadas no período. h/dia é a média por dia com
-        apontamento. Para o detalhe dia a dia de uma máquina, use o “Ver” ou a aba Horímetros em
-        Relatórios.
+        <b>Penúltimo</b> e <b>último</b> são os dois lançamentos válidos mais recentes pela ordem do{' '}
+        <b>horímetro</b> (a leitura final de um apontamento é a inicial do próximo), e não pela
+        ordem em que foram digitados ou importados. Isso impede que um registro carregado fora de
+        ordem apareça como o mais recente. Lançamentos inválidos — final menor que o inicial, mais
+        de 24 h ou leitura zerada — são ignorados aqui e marcados com ⚠ na coluna do equipamento.
       </p>
     </div>
   )
