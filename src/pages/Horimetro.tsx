@@ -314,16 +314,18 @@ export function Horimetro() {
                       )
                     })}
                   </tbody>
+                  {/* O rodapé soma TODOS os equipamentos, não só os da página —
+                      senão contradiz o cartão do topo, que é o total geral. */}
                   <tfoot className="bg-blue-50 font-bold text-slate-800">
                     <tr>
                       <td className="px-3 py-2 text-[11px] uppercase" colSpan={3}>
-                        Total dos 2 últimos ({total.equipamentos} equipamento(s))
+                        Total geral ({total.equipamentos} equipamento(s))
                       </td>
                       <td className="px-3 py-2 text-right text-base font-extrabold tabular-nums text-blue-900">
-                        {formatHoras(daPagina.reduce((s, r) => s + r.totalDoisUltimos, 0))}
+                        {formatHoras(total.totalDia)}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">
-                        {formatHoras(daPagina.reduce((s, r) => s + r.horasDoisUltimos, 0))}
+                        {formatHoras(resumos.reduce((s, r) => s + r.horasDoisUltimos, 0))}
                       </td>
                       <td colSpan={3}></td>
                     </tr>
